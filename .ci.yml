@@ -1,0 +1,60 @@
+stages:
+  - test
+  - build
+  - deploy
+
+image: $CI_DOCS_DOCKER_IMAGE
+
+test:
+  stage: test
+  tags: ['ace-x86_64']
+  image: 'external/docker/debian:sid'
+  variables:
+   SCALENODE_CPU: 4
+   SCALENODE_RAM: 8000
+   SCALENODE_DISK: 30
+  before_script:
+    - export PATH=$HOME/.local/bin:$PATH
+    - apt-get -qqy update
+    - apt-get -qqy install kicad git gerbv expect inkscape wget xz-utils
+    - git clone --quiet https://github.com/antmicro/jetson-orin-baseboard.git
+    - ./scripts/install.sh
+  script:
+    - export PATH=$HOME/.local/bin:$PATH
+    - cd jetson-orin-baseboard
+    - mkdir fab
+    - kicad-cli pcb export gerbers --no-protel-ext -o fab/ jetson-orin-baseboard.kicad_pcb
+    - kicad-cli pcb export drill --format gerber --excellon-separate-th -o fab/ jetson-orin-baseboard.kicad_pcb
+    - gerber2blend
+  artifacts:
+    paths:
+      - jetson-orin-baseboard
+
+build:
+  stage: build
+  tags: ['ace-x86_64']
+  before_script:
+    - cd documentation/
+    - pip3 install -r requirements.txt
+    - pip3 install sphinxcontrib-mermaid
+  script:
+    - cd documentation/
+    - make html latexpdf
+    - cp build/latex/*.pdf build/html/
+    - tar cf ../$CI_DOCS_ARCHIVE -C build/html/ .
+  artifacts:
+    paths:
+      - build
+      - $CI_DOCS_ARCHIVE
+
+deploy:
+  variables:
+    GIT_STRATEGY: none
+  dependencies:
+    - build
+  stage: deploy
+  tags: ['docs']
+  script: echo 'Deploying docs'
+  artifacts:
+    paths:
+      - $CI_DOCS_ARCHIVE
