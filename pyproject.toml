@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "gerber2blend"
+version = "1.0.0"
+description = "Gerber to Blender pipeline processor"
+authors = ["Antmicro <contact@antmicro.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+packages = [
+    { include = "**/*.py", from = "src/" },
+]
+include = [
+    { path = "templates", format = ["wheel", "sdist"] },
+]
+
+[tool.poetry.dependencies]
+python = "^3.10,<3.13"
+pyyaml = "^6.0.1"
+pyxdg = "^0.28"
+wand = "^0.6.13"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
