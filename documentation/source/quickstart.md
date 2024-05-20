@@ -12,8 +12,8 @@ git clone https://github.com/antmicro/jetson-orin-baseboard.git
 
 ### Install KiCad
 
-Open Source EDA tool [KiCad](https://www.kicad.org/) will be used for generation of the `Geber` format files for the board
-KiCad from version 7.0.0 includes CLI that can be used in the command line and CI environment.
+Open Source EDA tool [KiCad](https://www.kicad.org/) will be used for generation of the `Geber` format files for the board.
+KiCad from version 7.0.0 provides CLI that can be used in the command line and CI environment.
 To install KiCad run:
 ```
 sudo apt install kicad
