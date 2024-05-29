@@ -3,9 +3,5 @@
 !img/*png
 *swo
 log
-antmicro-blender-models
-blender-3.2.2-linux-x64
-helper-scripts/temp_get_blend_dir
-gerbv_convert.sh
 .g2b_blender/*
 g2b_blender.tar.xz
