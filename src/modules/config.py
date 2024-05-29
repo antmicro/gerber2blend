@@ -1,9 +1,7 @@
 import os
-import sys
-from os import getcwd, path as pth
+from os import getcwd, path
 import modules.fileIO as fio
 import core.blendcfg
-from xdg.BaseDirectory import load_data_paths  # type: ignore
 from typing import Dict, Any
 import logging
 
@@ -46,7 +44,8 @@ mat_blend_path: str = ""
 mat_library_path: str = ""
 model_library_path: str = ""
 PCB_name: str = ""
-path: str = ""
+fab_path: str = ""
+prj_path: str = ""
 stackup_data: str = ""
 pcbthickness: str = ""
 pcbscale: str = ""
@@ -58,18 +57,18 @@ def init_global(arguments):
     Args:
         arguments: CLI arguments
     """
-    global CWD
+    global prj_path
     global blendcfg
     global args
     global g2b_dir_path
 
-    CWD = getcwd() + "/"
-    g2b_dir_path = pth.dirname(__file__) + "/.."
+    prj_path = getcwd() + "/"
+    g2b_dir_path = path.dirname(__file__) + "/.."
 
     # Create blendcfg if it does not exist
-    core.blendcfg.check_and_copy_blendcfg(CWD, g2b_dir_path)
+    core.blendcfg.check_and_copy_blendcfg(prj_path, g2b_dir_path)
     # Read blendcfg file
-    blendcfg = core.blendcfg.open_blendcfg(CWD, arguments.config_preset)
+    blendcfg = core.blendcfg.open_blendcfg(prj_path, arguments.config_preset)
 
     configure_paths(arguments)
     configure_constants(arguments)
@@ -84,6 +83,7 @@ def configure_paths(arguments):
     Args:
         arguments: CLI arguments
     """
+    global fab_path
     global png_path
     global gbr_path
     global svg_path
@@ -92,25 +92,27 @@ def configure_paths(arguments):
     global mat_library_path
     global model_library_path
     global PCB_name
-    global path
+    global prj_path
 
-    path = CWD + "fab/"
-    if not os.path.isdir(path):
+    fab_path = prj_path + blendcfg["SETTINGS"]["GERBER_DIR"] + "/"
+    if not os.path.isdir(fab_path):
         raise RuntimeError(
-            "There is no fab/ directory in the current working directory! (%s)" % CWD
+            "There is no %s/ directory in the current working directory! (%s)"
+            % blendcfg["SETTINGS"]["GERBER_DIR"],
+            prj_path,
         )
 
     # Determine the name of the PCB to use as a name for the .blend
     if arguments.blend_path is None:
-        PCB_name = fio.read_pcb_name(CWD)
-        pcb_blend_path = path + PCB_name + ".blend"
+        PCB_name = fio.read_pcb_name(prj_path)
+        pcb_blend_path = fab_path + PCB_name + ".blend"
     else:
         PCB_name = arguments.blend_path.split("/")[-1].replace(".blend", "")
-        pcb_blend_path = pth.abspath(arguments.blend_path)
+        pcb_blend_path = path.abspath(arguments.blend_path)
 
-    png_path = path + "PNG/"
-    gbr_path = path + "GBR/"
-    svg_path = path + "SVG/"
+    png_path = fab_path + "PNG/"
+    gbr_path = fab_path + "GBR/"
+    svg_path = fab_path + "SVG/"
 
     # paths:
     mat_blend_path = g2b_dir_path + "/templates/materials.blend"
@@ -138,16 +140,17 @@ def configure_stackup(arguments):
     """
     global stackup_data
     global pcbthickness
+    global fab_path
 
     # read stackup from stackup.json
     if blendcfg["EFFECTS"]["STACKUP"]:
-        if pth.isfile(path + "/stackup.json"):
-            pcbthickness, stackup_data = fio.parse_stackup(path + "/stackup.json")
+        if path.isfile(fab_path + "/stackup.json"):
+            pcbthickness, stackup_data = fio.parse_stackup(fab_path + "/stackup.json")
         else:
             logger.error(
                 "No stackup.json file found. See documentation for stackup.json format. Aborting."
             )
-            logger.error("Tried looking in: %s", path)
+            logger.error("Tried looking in: %s", fab_path)
             exit(1)
     else:
         pcbthickness = blendcfg["SETTINGS"]["DEFAULT_BRD_THICKNESS"]

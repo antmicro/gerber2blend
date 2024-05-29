@@ -111,7 +111,7 @@ install_in_blender()
     echo "Installing ${TOOLNAME} inside the Blender Python environment.."
     $PYTHON -m ensurepip
     $PYTHON -m pip install --upgrade pip
-    $PYTHON -m pip install "${REPO_DIR}"
+    $PYTHON -m pip install --force-reinstall "${REPO_DIR}"
 }
 
 apply_workarounds()

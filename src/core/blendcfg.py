@@ -97,6 +97,7 @@ def parse_strings(arg):
 CONFIGURATION_SCHEMA = {
     "SETTINGS": {
         "PRJ_EXTENSION": Field("string"),
+        "GERBER_DIR": Field("string"),
         "DPI": Field("number"),
         "DEFAULT_BRD_THICKNESS": Field("number"),
         "SILKSCREEN": Field("color_preset", conv=parse_strings),

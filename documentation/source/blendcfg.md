@@ -10,6 +10,7 @@ The file includes the following config sections:
 ### `SETTINGS`
 General board and conversion settings:
 * `PRJ_EXTENSION` - string containing EDA software main project file extension, used to read the PCB project name from it. Can be set to `""` if the extension is undefined. If no files with this extension are found, `unknownpcb` will be used as name. 
+* `GERBER_DIR` - string with directory name containing all input Gerber files. Also stackup files and all output temporary files are kept there. Ridectory can be described as a path relative to project's main direectory. By default `fab` directory is used.
 * `DPI` - resolution of bitmaps measure exported from Gerber files, influences quality of PCB soldermask shaders and board model creation time. Standard value is **600**. 
 * `DEFAULT_BRD_THICKNESS` - default board thickness used to generate PCB model when rendering without stackup provided. Default value is **1.6**.
 * `SILKSCREEN` - silkscreen marking color on PCB texture, options: `White` (default), `Black`

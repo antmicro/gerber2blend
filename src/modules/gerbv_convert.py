@@ -88,7 +88,7 @@ def do_prepare_build_directory():
     }
     # Inputs that are allowed to have many files.
     # For each matching input file, the file will be copied to
-    # the fab/GBR/ directory under the name:
+    # the blendcfg[SETTINGS][FAB_PATH]/GBR/ directory under the name:
     #   GERB_FILE_RENAMES[which_input] + <index_of_file> + ".gbr"
     # The files are indexed according to the lexicographical order of
     # their original file names.
@@ -100,14 +100,15 @@ def do_prepare_build_directory():
     # move them to the build directory under the above specified names.
     gerbers_missing = False
     for k, v in config.blendcfg["GERBER_FILENAMES"].items():
-        logger.info("Looking up %s in %s..", v, config.path)
-        fpath = os.path.join(config.path, v)
+        logger.info("Looking up %s in %s..", v, config.fab_path)
+        fpath = os.path.join(config.fab_path, v)
         matches = glob.glob(fpath)
         if len(matches) == 0:
             logger.error(
-                "Could not find required Gerber %s with pattern: %s in fab/ directory!",
+                "Could not find required Gerber %s with pattern: %s in %s directory!",
                 k,
                 v,
+                config.fab_path.replace(config.prj_path, ""),
             )
             gerbers_missing = True
             continue
@@ -135,7 +136,8 @@ def do_prepare_build_directory():
 
     if gerbers_missing:
         raise RuntimeError(
-            "One or more Gerber files are missing from the fab/ directory. "
+            "One or more Gerber files are missing from the %s directory. ",
+            config.fab_path.replace(config.prj_path, ""),
         )
 
 

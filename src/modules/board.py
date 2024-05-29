@@ -359,7 +359,7 @@ def extrude_mesh(obj, height):
         bpy.ops.object.select_all(action="DESELECT")
 
 
-def import_gbr_svg(name, filepth):
+def import_svg(name, filepth):
     """Import curve from SVG vector file"""
 
     return_obj = None
@@ -381,11 +381,11 @@ def import_gbr_svg(name, filepth):
     return return_obj
 
 
-def prepare_mesh(name, path, clean, height, scale):
+def prepare_mesh(name, svg_path, clean, height, scale):
     """Prepare mesh from imported curve"""
 
     bpy.ops.object.select_all(action="DESELECT")
-    obj = import_gbr_svg(name, path)
+    obj = import_svg(name, svg_path)
     if obj is not None:
         if clean:
             clean_outline(obj)
