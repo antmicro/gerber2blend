@@ -66,4 +66,4 @@ For more information regarding Blender supported by the `gerber2blend` visit the
 
 ## License
 
-The `gerber2blend` utility is licensed under the Apache-2 [license](LICENSE).
+The `gerber2blend` utility is licensed under the Apache-2.0 [license](LICENSE).
