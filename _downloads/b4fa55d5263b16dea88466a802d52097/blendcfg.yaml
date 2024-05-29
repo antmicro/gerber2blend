@@ -1,0 +1,32 @@
+default: &default
+  SETTINGS:
+    PRJ_EXTENSION: ".kicad_pro" # file extension used to derive name for generated blend file e.g. example.kicad_pro -> example.blend, type "" if unspecified
+    DPI: 600 # quality of bitmaps exported from Gerbers, influences board model creation time
+    DEFAULT_BRD_THICKNESS: 1.6 # used when stackup effect is turned off
+    SILKSCREEN: White # options: White (default), Black
+    SOLDERMASK:
+      Black # options: Black (default), White, Green, Blue, Red
+      # for custom color, type pair of hex values: AABBCC, DDEEFF (colors for areas with and without copper beneath)
+    USE_INKSCAPE: True # use when board has overlapping holes footprints, sometimes fixes mesh generation
+
+  GERBER_FILENAMES:
+    EDGE_CUTS: "*-Edge_Cuts.gbr"
+    PTH: "*-PTH-drl.gbr"
+    NPTH: "*-NPTH-drl.gbr"
+    IN: "*-In*.gbr"
+    FRONT_SILK: "*-F_Silkscreen.gbr"
+    BACK_SILK: "*-B_Silkscreen.gbr"
+    FRONT_MASK: "*-F_Mask.gbr"
+    BACK_MASK: "*-B_Mask.gbr"
+    FRONT_CU: "*-F_Cu.gbr"
+    BACK_CU: "*-B_Cu.gbr"
+    FRONT_FAB: "*-F_Fab.gbr"
+    BACK_FAB: "*-B_Fab.gbr"
+
+  EFFECTS:
+    STACKUP: False # if True, requires stackup.json output
+
+  STAGES:
+    - CLEARSCENE:
+    - GERBCONVERT:
+    - BOARD:
