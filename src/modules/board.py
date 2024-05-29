@@ -54,7 +54,9 @@ def make_board():
                 lambda f: f.startswith(GBR_IN) and f.endswith(".png"),
                 listdir(config.png_path),
             )
-        )
+        ),
+        key=lambda x: int(x[3:].replace(".png", "")),
+        reverse=True,
     )
     In_list = [f"{GBR_B_CU}.png"] + In_list + [f"{GBR_F_CU}.png"]
     if not config.stackup_data:  # if empty

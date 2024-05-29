@@ -116,7 +116,12 @@ def do_prepare_build_directory():
         # Handle inputs with many files
         if k in GERBS_WITH_MANY_FILES:
             # Sort the filelist, as glob.glob() does not guarantee a sorted output
-            matches = sorted(matches)
+            matches = sorted(
+                matches,
+                key=lambda x: int(
+                    x.split("/")[-1].split("-In")[-1].replace("_Cu.gbr", "")
+                ),
+            )
             for i in range(0, len(matches)):
                 gerber_path = matches[i]
                 new_name = GERB_FILE_RENAMES[k] + str(i) + ".gbr"
