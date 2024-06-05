@@ -31,17 +31,19 @@ Each of the following options specifies a wildcard pattern - the following opera
 
 Gerber filenames:
 * `EDGE_CUTS` - pattern for Edge Cuts Gerber
-* `PTH` - pattern for the PTH drill files
-* `NPTH` - pattern for the NPTH drill files
-* `IN` - pattern for the Inner Copper layer Gerber, files matched by this pattern are treated as inner layers
+* `PTH` - pattern for the PTH drill file _(optional)_
+* `NPTH` - pattern for the NPTH drill file _(optional)_
+* `IN` - pattern for Inner Copper layer Gerbers, files matched by this pattern are treated as inner layers _(optional)_
 * `FRONT_SILK` - pattern for the Front Silk Gerber
 * `BACK_SILK` - pattern for the Back Silk Gerber
 * `FRONT_MASK` - pattern for the Front Mask Gerber
 * `BACK_MASK` - pattern for the Back Mask Gerber
 * `FRONT_CU` - pattern for the Front Copper layer Gerber
 * `BACK_CU` - pattern for the Back Copper layer Gerber
-* `FRONT_FAB` - pattern for the Front Fab Gerber
-* `BACK_FAB` - pattern for the Front Fab Gerber
+* `FRONT_FAB` - pattern for the Front Fab Gerber _(optional)_
+* `BACK_FAB` - pattern for the Back Fab Gerber _(optional)_
+
+Layers marked as _(optional)_ can be removed from `blendcfg.yaml` to skip using them during mesh generation. In case optional layers are missing their Gerber files in `fab/` directory while they are listed in `GERBER_FILENAMES` section, `gerber2blend` will throw a warning but will continue working.
 
 ### `STAGES` section
 A list that defines modules to be run when executing `gerber2blend`.

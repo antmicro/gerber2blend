@@ -10,32 +10,15 @@ logger = logging.getLogger(__name__)
 DEFAULT_PCB_NAME = "unknownpcb"
 
 
-def parse_stackup(path):
-    """Retrieve stackup data from JSON"""
+def touch(path: str):
+    """Create an empty file at the given path
 
-    stackup_data = []
-    pcbthickness = 0
-
-    try:
-        stackup_json_file = open(path)
-        stackup_json_data = json.load(stackup_json_file)
-        stackup_json_file.close()
-
-        stackup_data = [
-            (layer["name"], layer["thickness"]) for layer in stackup_json_data["layers"]
-        ]
-
-        for layer in stackup_json_data["layers"]:
-            if layer["thickness"] is not None:
-                pcbthickness += float(layer["thickness"])
-
-        logger.debug("Found stackup data: " + str(stackup_data))
-        logger.debug("Calculated thickness: " + str(pcbthickness))
-
-    except Exception:
-        raise RuntimeError("Failed to read data from stackup.json file, aborting")
-
-    return pcbthickness, stackup_data
+    Args:
+        path: path where to create the file
+    """
+    with open(path, "w"):
+        # intentionally empty
+        pass
 
 
 def read_pcb_name_from_prj(path, extension):
