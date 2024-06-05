@@ -24,7 +24,7 @@ GBR_B_FAB = "B_Fab"
 # compared to the above, this is used as a constant prefix for the name.
 # There will be many inner layers, so each is suffixed in increments of
 # 1, starting from 0 (In_0, In_1, ..)
-GBR_IN = "In_"
+GBR_IN = "In"
 
 # This module is used to share variables between modules.
 # Variables are only accessible after running init_global() in main function.
@@ -72,7 +72,6 @@ def init_global(arguments):
 
     configure_paths(arguments)
     configure_constants(arguments)
-    configure_stackup(arguments)
 
     args = arguments
 
@@ -130,28 +129,3 @@ def configure_constants(arguments):
 
     blender_ratio = 2.8349302554764217
     pcbscale = 1000 * blender_ratio
-
-
-def configure_stackup(arguments):
-    """Configure board thickness
-
-    Args:
-        arguments: CLI arguments
-    """
-    global stackup_data
-    global pcbthickness
-    global fab_path
-
-    # read stackup from stackup.json
-    if blendcfg["EFFECTS"]["STACKUP"]:
-        if path.isfile(fab_path + "/stackup.json"):
-            pcbthickness, stackup_data = fio.parse_stackup(fab_path + "/stackup.json")
-        else:
-            logger.error(
-                "No stackup.json file found. See documentation for stackup.json format. Aborting."
-            )
-            logger.error("Tried looking in: %s", fab_path)
-            exit(1)
-    else:
-        pcbthickness = blendcfg["SETTINGS"]["DEFAULT_BRD_THICKNESS"]
-        stackup_data = []

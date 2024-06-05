@@ -1,7 +1,9 @@
 import bpy  # type: ignore
 import bmesh  # type:ignore
 import core.module
+from typing import List, Tuple
 import modules.config as config
+import modules.stackup as stk
 import modules.custom_utilities as cu
 from modules.config import (
     GBR_IN,
@@ -47,39 +49,7 @@ def make_board():
 
     logger.info("Generating board")
 
-    # inner layers
-    In_list = sorted(
-        list(
-            filter(
-                lambda f: f.startswith(GBR_IN) and f.endswith(".png"),
-                listdir(config.png_path),
-            )
-        ),
-        key=lambda x: int(x[3:].replace(".png", "")),
-        reverse=True,
-    )
-    In_list = [f"{GBR_B_CU}.png"] + In_list + [f"{GBR_F_CU}.png"]
-    if not config.stackup_data:  # if empty
-        layer_thickness = [
-            config.pcbthickness / (len(In_list) + 1) for i in range(len(In_list) + 1)
-        ]
-    else:
-        layer_thickness = [
-            pair[1]
-            for pair in sorted(
-                list(filter(lambda pair: "dielectric" in pair[0], config.stackup_data)),
-                reverse=True,
-            )
-        ]
-        layer_thickness = (
-            [pair[1] for pair in config.stackup_data if "B.Mask" in pair[0]]
-            + layer_thickness
-            + [pair[1] for pair in config.stackup_data if "F.Mask" in pair[0]]
-        )
-    if not config.blendcfg["EFFECTS"]["STACKUP"]:
-        In_list = []
-        layer_thickness = [config.pcbthickness]
-
+    In_list, layer_thickness = generate_inner_layer_list()
     logging.debug(f"Found layer list: {In_list}")
     logging.debug(f"Thickness of layers: {layer_thickness}")
     board_col = cu.create_collection("Board")
@@ -208,7 +178,7 @@ def make_board():
         + " y:"
         + str(pcb.dimensions.y)
         + " z:"
-        + str(config.pcbthickness)
+        + str(stk.get().thickness)
     )
 
     # parent to empty object (pcb_parent)
@@ -225,15 +195,16 @@ def make_board():
     for i, vert in enumerate(cu.get_bbox(pcb, "3d")):
         bbox_mesh.vertices[i].co = vert.copy()
         if bbox_mesh.vertices[i].co[2] >= 0.0001:
-            bbox_mesh.vertices[i].co[2] = config.pcbthickness
+            bbox_mesh.vertices[i].co[2] = stk.get().thickness
 
     # seperate layers
     thickness_sum = 0.0
     found_dielectric = 0
     sorted_layers = sorted(empty_obj.children, key=lambda x: int(x.name[9:]))
+    layers_count = len(sorted_layers)
     if config.blendcfg["EFFECTS"]["STACKUP"]:
-        for layer, thick in config.stackup_data[::-1]:
-            if thick is None:
+        for layer, thick in stk.get().stackup_data[::-1]:
+            if thick is None or found_dielectric > layers_count - 1:
                 continue
             if "dielectric" in layer or "Mask" in layer:
                 sorted_layers[found_dielectric].location.z += thickness_sum
@@ -251,6 +222,69 @@ def make_board():
 
     logger.info("Board generated!")
     return empty_obj
+
+
+def generate_inner_layer_list() -> Tuple[List[str], List[float]]:
+    """Generate a list of inner layer PNGs that need to be included in the model
+
+    Additionally, returns the thickness of each layer.
+    """
+    In_list: List[str] = []
+    all_layer_thickness = [stk.get().thickness]
+
+    # When stackup generation is disabled, don't need to do anything else
+    if not config.blendcfg["EFFECTS"]["STACKUP"]:
+        return In_list, all_layer_thickness
+
+    # Collect all inner layer PNG files from the fabrication data folder
+    In_list = sorted(
+        list(
+            filter(
+                lambda f: f.startswith(GBR_IN) and f.endswith(".png"),
+                listdir(config.png_path),
+            )
+        ),
+        key=lambda x: int(x[len(GBR_IN) :].replace(".png", "")),
+        reverse=True,
+    )
+    if len(In_list) == 0:
+        logger.warning(
+            f"Could not find any converted inner layer PNGs in {config.png_path}!\n"
+            f"Verify if the inner layer gerbers are present and specified "
+            f"with GERBER_FILENAMES in the blendcfg.yaml file."
+        )
+    # Sandwich the inner layers between Back and Front Cu
+    All_list = [f"{GBR_B_CU}.png"] + In_list + [f"{GBR_F_CU}.png"]
+    stk_data = stk.get().stackup_data
+    if not stk_data:
+        # When no stackup data is provided, divide the configured PCB thickness evenly
+        all_layer_thickness = [
+            stk.get().thickness / (len(All_list) + 1) for _ in range(len(All_list) + 1)
+        ]
+    else:
+        # Find the thickness of "dielectric <N>" entries in the stackup and sort
+        # based on their names. This is used as the thickness of the inner layers.
+        stk_in_list = [pair[0] for pair in stk_data if GBR_IN in pair[0]]
+        if len(In_list) != len(stk_in_list):
+            raise RuntimeError(
+                f"Stackup layer mismatch between exported gerber files and stackup.json\n"
+                f"Found {len(In_list)} gerber file(s), found {len(stk_in_list)} layer(s) defined in JSON. Aborting!"
+            )
+        in_layer_thickness = [
+            pair[1]
+            for pair in sorted(
+                list(filter(lambda pair: "dielectric" in pair[0], stk_data)),
+                reverse=True,
+            )
+        ]
+        # Sandwich the inner layers between thicknesses for Back and Front mask
+        all_layer_thickness = (
+            [pair[1] for pair in stk_data if "B.Mask" in pair[0]]
+            + in_layer_thickness
+            + [pair[1] for pair in stk_data if "F.Mask" in pair[0]]
+        )
+
+    return All_list, all_layer_thickness
 
 
 ########################################
@@ -364,6 +398,8 @@ def extrude_mesh(obj, height):
 def import_svg(name, filepth):
     """Import curve from SVG vector file"""
 
+    if not path.exists(filepth):
+        return None
     return_obj = None
     svgname = filepth.split("/")[-1]
     bpy.ops.import_curve.svg(filepath=str(filepth))

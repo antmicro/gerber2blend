@@ -127,7 +127,7 @@ def face_desel(obj):
 
 
 def create_collection(name):
-    """Creat and link objects to collection"""
+    """Create and link objects to collection"""
 
     if not bpy.data.collections.get(name):
         newCol = bpy.data.collections.new(name)
@@ -139,7 +139,8 @@ def remove_collection(name):
     """Remove collection"""
 
     remCol = bpy.context.scene.collection.children.get(name)
-    bpy.data.collections.remove(remCol)
+    if remCol is not None:
+        bpy.data.collections.remove(remCol)
 
 
 def link_obj_to_collection(obj, target_coll):

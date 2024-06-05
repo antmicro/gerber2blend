@@ -9,7 +9,9 @@ from typing import List, Tuple
 from wand.image import Image  # type: ignore
 from wand.color import Color  # type: ignore
 import core.module
+import core.blendcfg
 import modules.config as config
+import modules.fileIO as fio
 from modules.config import (
     GBR_IN,
     GBR_PTH,
@@ -59,7 +61,13 @@ class GerbConvert(core.module.Module):
 
 
 def do_prepare_build_directory():
-    """Prepare the build directory and populate it with required files"""
+    """Prepare the build directory and populate it with required files
+
+    This function prepares the fabrication data directory for running board generation.
+    Gerbers from the current hardware project (as defined in blendcfg.yaml)
+    are copied to their correct location inside GBR/ directory, and optional GBRs
+    are replaced with a dummy.
+    """
     # Prepare paths; create subdirectories for intermediate steps files
     mkdir(config.svg_path)
     mkdir(config.png_path)
@@ -100,17 +108,30 @@ def do_prepare_build_directory():
     # move them to the build directory under the above specified names.
     gerbers_missing = False
     for k, v in config.blendcfg["GERBER_FILENAMES"].items():
+        if v is None:
+            # Only makes sense to do this with singular gerber files
+            if k not in GERBS_WITH_MANY_FILES:
+                new_path = config.gbr_path + GERB_FILE_RENAMES[k] + ".gbr"
+                logger.info(
+                    "Gerber file %s missing. Replacing with empty file: %s", k, new_path
+                )
+                fio.touch(new_path)
+            continue
+
         logger.info("Looking up %s in %s..", v, config.fab_path)
         fpath = os.path.join(config.fab_path, v)
         matches = glob.glob(fpath)
         if len(matches) == 0:
-            logger.error(
-                "Could not find required Gerber %s with pattern: %s in %s directory!",
-                k,
-                v,
-                config.fab_path.replace(config.prj_path, ""),
-            )
-            gerbers_missing = True
+            if core.blendcfg.CONFIGURATION_SCHEMA["GERBER_FILENAMES"][k].optional:
+                logger.warning(f"Did not find optional {k} in path: {config.fab_path}")
+            else:
+                logger.error(
+                    "Could not find required Gerber %s with pattern: %s in %s/ directory!",
+                    k,
+                    v,
+                    config.blendcfg["SETTINGS"]["GERBER_DIR"],
+                )
+                gerbers_missing = True
             continue
 
         # Handle inputs with many files
@@ -122,6 +143,14 @@ def do_prepare_build_directory():
                     x.split("/")[-1].split("-In")[-1].replace("_Cu.gbr", "")
                 ),
             )
+            if len(matches) == 0:
+                logger.error(
+                    "Could not find required Gerber %s with pattern: %s in %s/ directory!",
+                    k,
+                    v,
+                    config.blendcfg["SETTINGS"]["GERBER_DIR"],
+                )
+                gerbers_missing = True
             for i in range(0, len(matches)):
                 gerber_path = matches[i]
                 new_name = GERB_FILE_RENAMES[k] + str(i) + ".gbr"
@@ -141,8 +170,7 @@ def do_prepare_build_directory():
 
     if gerbers_missing:
         raise RuntimeError(
-            "One or more Gerber files are missing from the %s directory. ",
-            config.fab_path.replace(config.prj_path, ""),
+            f"One or more mandatory Gerber files are missing from the {config.blendcfg['SETTINGS']['GERBER_DIR']}/ directory."
         )
 
 
@@ -151,7 +179,11 @@ def do_convert_gerb_to_svg():
 
     # Convert GBR to SVG, parallelly
     logger.info("Converting GBR to SVG files. ")
-    files_for_SVG = [GBR_PTH, GBR_NPTH, GBR_EDGE_CUTS]
+    files_for_SVG = [GBR_EDGE_CUTS]
+    if os.path.exists(os.path.join(config.gbr_path, GBR_PTH + ".gbr")):
+        files_for_SVG.append(GBR_PTH)
+    if os.path.exists(os.path.join(config.gbr_path, GBR_NPTH + ".gbr")):
+        files_for_SVG.append(GBR_NPTH)
     with Pool() as p:
         p.map(partial(gbr_to_svg_convert), files_for_SVG)
 
@@ -394,6 +426,8 @@ def gbr_to_svg_convert(file_name: str):
 def correct_frame_in_svg(data, frame, frame_lines):
     """Correct dimension of svg file based on edge cuts layer"""
     file_path = config.svg_path + data + ".svg"
+    if not os.path.exists(file_path):
+        return
     with open(file_path, "rt") as handle:
         svg_data = handle.read().split("\n")
 
@@ -408,6 +442,8 @@ def correct_frame_in_svg(data, frame, frame_lines):
 
 def inkscape_path_union(file_path: str):
     """Run Inkscape command"""
+    if not os.path.exists(file_path):
+        return
     rc = os.system(
         f'inkscape --actions="select-all;object-stroke-to-path;path-union;export-filename:{file_path};export-do" {file_path}'
     )
@@ -479,7 +515,8 @@ def wand_operation(
     """Imagemagick-like operation"""
 
     image_path = config.png_path + in_file + ".png"
-
+    if not os.path.exists(image_path):
+        return
     with Image(filename=image_path) as png:
         percent_fuzz = int(png.quantum_range * fuzz / 100)
         if transparency is not None:
@@ -499,6 +536,8 @@ def add_pngs(in1, in_list, out):
     with Image(filename=config.png_path + in1 + ".png") as png:
         png.background_color = Color("transparent")
         for file in in_list:
+            if not os.path.exists(file):
+                continue
             with Image(filename=config.png_path + file + ".png") as png2:
                 png.composite(image=png2, gravity="center")
 

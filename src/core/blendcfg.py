@@ -15,18 +15,27 @@ BLENDCFG_FILENAME = "blendcfg.yaml"
 class Field:
     """Represents schema of a configuration field"""
 
-    def __init__(self, type: str, conv: Optional[Callable[[Any], Any]] = None) -> None:
+    def __init__(
+        self,
+        type: str,
+        conv: Optional[Callable[[Any], Any]] = None,
+        optional: bool = False,
+    ) -> None:
         """Create a configuration field
 
         Args:
             type: String name of the type of the field. One of: "color",
-                  "background", "bool", "number", "color_preset", "transition".
+                "background", "bool", "number", "color_preset", "transition".
             conv: Converter function to use. When set, the value of the field from
-                  `blendcfg.yaml` is passed to this function. Value returned from
-                  the function is still checked against the field's specified type.
+                `blendcfg.yaml` is passed to this function. Value returned from
+                the function is still checked against the field's specified type.
+            optional: Specify if the field can be omitted from the blendcfg. Optional
+                fields are set to None in the configuration if they are not
+                present.
         """
         self.type = type
         self.conv = conv
+        self.optional = optional
 
 
 def check_and_copy_blendcfg(file_path, g2b_path):
@@ -37,13 +46,16 @@ def check_and_copy_blendcfg(file_path, g2b_path):
         )
 
 
-def is_color(arg: str) -> bool:
+def is_color(arg: str | None) -> bool:
     hex_chars = "0123456789ABCDEF"
+    if arg is None:
+        return False
     return len(arg) == 6 and all([c in hex_chars for c in arg])
 
 
-def is_color_preset(arg: str | list[str]) -> bool:
-
+def is_color_preset(arg: str | list[str] | None) -> bool:
+    if arg is None:
+        return False
     presets = ["White", "Black", "Blue", "Red", "Green"]  # allowed color keywords
     if isinstance(arg, list):
         arg = arg[0]
@@ -106,17 +118,17 @@ CONFIGURATION_SCHEMA = {
     },
     "GERBER_FILENAMES": {
         "EDGE_CUTS": Field("string"),
-        "PTH": Field("string"),
-        "NPTH": Field("string"),
-        "IN": Field("string"),
+        "PTH": Field("string", optional=True),
+        "NPTH": Field("string", optional=True),
+        "IN": Field("string", optional=True),
         "FRONT_SILK": Field("string"),
         "BACK_SILK": Field("string"),
         "FRONT_MASK": Field("string"),
         "BACK_MASK": Field("string"),
         "FRONT_CU": Field("string"),
         "BACK_CU": Field("string"),
-        "FRONT_FAB": Field("string"),
-        "BACK_FAB": Field("string"),
+        "FRONT_FAB": Field("string", optional=True),
+        "BACK_FAB": Field("string", optional=True),
     },
     "EFFECTS": {
         "STACKUP": Field("bool"),
@@ -141,9 +153,14 @@ def check_throw_error(cfg, args, schema: Field):
     except Exception:
         missing_config = True
 
-    if val is None or missing_config:
+    if not schema.optional and (val is None or missing_config):
         logger.error(f"[{args[0]}][{args[1]}] not found in {BLENDCFG_FILENAME}")
         raise RuntimeError("Configuration invalid")
+
+    # Short-circuit when the field is not required
+    if val is None and schema.optional:
+        cfg[args[0]][args[1]] = None
+        return
 
     if schema.conv is not None:
         try:

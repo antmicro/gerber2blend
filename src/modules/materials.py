@@ -163,23 +163,26 @@ def process_materials(board_col, In_list):
         f"{GBR_B_MASK}.png",
         f"{GBR_B_CU}.png",
     ]
-    for t in textures:
-        reload_textures(t)
 
     layers_materials = ["main_pcb_bot"]
-    for i, png in enumerate(In_list):
-        mat_name = "main_pcb_inner" + str(i + 1)
-        create_inner_layer_material(mat_name, png)
-        layers_materials.append(mat_name)
-        materials.append(mat_name)
+    if config.blendcfg["EFFECTS"]["STACKUP"]:
+        for i, png in enumerate(In_list):
+            mat_name = "main_pcb_inner" + str(i + 1)
+            create_inner_layer_material(mat_name, png)
+            layers_materials.append(mat_name)
+            materials.append(mat_name)
+
     layers_materials += ["main_pcb_top"]
 
-    for i, pcb in enumerate(board_col.objects):
-        for material in materials:
-            append_material(pcb, material)
-
-        assign_material(pcb, layers_materials[i], "bot")
-        assign_material(pcb, layers_materials[i + 1], "top")
+    # update paths to pngs
+    for t in textures:
+        reload_textures(t)
+    # assign materials to PCB layers
+    for i, board_layer in enumerate(board_col.objects):
+        append_material(board_layer, layers_materials[i])
+        append_material(board_layer, layers_materials[i + 1])
+        assign_material(board_layer, layers_materials[i], "bot")
+        assign_material(board_layer, layers_materials[i + 1], "top")
 
 
 def clear_empty_material_slots():
