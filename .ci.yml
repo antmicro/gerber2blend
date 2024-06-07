@@ -1,9 +1,40 @@
 stages:
+  - code-checks
   - test
   - build
   - deploy
 
 image: $CI_DOCS_DOCKER_IMAGE
+
+type-correctness:
+  stage: code-checks
+  image: 'external/docker/debian:sid'
+  tags: ['ace-x86_64']
+  variables:
+   SCALENODE_CPU: 4
+   SCALENODE_RAM: 2048
+   SCALENODE_DISK: 30
+  allow_failure: true
+  script:
+    - apt update && apt -qqy install python3 pip python3-poetry
+    - poetry add mypy fake-bpy-module-3.2
+    - poetry install
+    - poetry run mypy --install-types --non-interactive --disallow-untyped-defs src/
+
+code-formatting:
+  stage: code-checks
+  image: 'external/docker/debian:sid'
+  tags: ['ace-x86_64']
+  variables:
+   SCALENODE_CPU: 4
+   SCALENODE_RAM: 2048
+   SCALENODE_DISK: 30
+  allow_failure: true
+  script:
+    - apt update && apt -qqy install python3 pip python3-poetry
+    - poetry add black
+    - poetry install
+    - poetry run black --check src/
 
 test:
   stage: test
