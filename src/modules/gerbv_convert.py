@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 class GerbConvert(core.module.Module):
     """Module to convert gerbers to the required intermediate files"""
 
-    def execute(self):
+    def execute(self) -> None:
         """Run the module"""
 
         do_prepare_build_directory()
@@ -60,7 +60,7 @@ class GerbConvert(core.module.Module):
         do_generate_displacement_maps()
 
 
-def do_prepare_build_directory():
+def do_prepare_build_directory() -> None:
     """Prepare the build directory and populate it with required files
 
     This function prepares the fabrication data directory for running board generation.
@@ -112,9 +112,7 @@ def do_prepare_build_directory():
             # Only makes sense to do this with singular gerber files
             if k not in GERBS_WITH_MANY_FILES:
                 new_path = config.gbr_path + GERB_FILE_RENAMES[k] + ".gbr"
-                logger.info(
-                    "Gerber file %s missing. Replacing with empty file: %s", k, new_path
-                )
+                logger.info("Gerber file %s missing. Replacing with empty file: %s", k, new_path)
                 fio.touch(new_path)
             continue
 
@@ -139,9 +137,7 @@ def do_prepare_build_directory():
             # Sort the filelist, as glob.glob() does not guarantee a sorted output
             matches = sorted(
                 matches,
-                key=lambda x: int(
-                    x.split("/")[-1].split("-In")[-1].replace("_Cu.gbr", "")
-                ),
+                key=lambda x: int(x.split("/")[-1].split("-In")[-1].replace("_Cu.gbr", "")),
             )
             if len(matches) == 0:
                 logger.error(
@@ -155,9 +151,7 @@ def do_prepare_build_directory():
                 gerber_path = matches[i]
                 new_name = GERB_FILE_RENAMES[k] + str(i) + ".gbr"
                 new_path = config.gbr_path + new_name
-                logger.info(
-                    "Found %s%d: %s, saving as: %s", k, i, gerber_path, new_path
-                )
+                logger.info("Found %s%d: %s, saving as: %s", k, i, gerber_path, new_path)
                 shutil.copy(gerber_path, new_path)
             continue
 
@@ -174,7 +168,7 @@ def do_prepare_build_directory():
         )
 
 
-def do_convert_gerb_to_svg():
+def do_convert_gerb_to_svg() -> None:
     """Convert required gerb files to SVG"""
 
     # Convert GBR to SVG, parallelly
@@ -213,7 +207,7 @@ def do_convert_gerb_to_svg():
         inkscape_path_union(f"{config.svg_path}{GBR_NPTH}.svg")
 
 
-def do_generate_displacement_map_foundation():
+def do_generate_displacement_map_foundation() -> None:
     """Generate the displacement map foundation"""
     logger.info("Generating top and bottom displacement map foundation... ")
     map_input_list = [OUT_F_DISPMAP, OUT_B_DISPMAP]
@@ -222,16 +216,12 @@ def do_generate_displacement_map_foundation():
         p.map(partial(generate_displacement_map_png), map_input_list)
 
 
-def do_convert_layer_to_png():
+def do_convert_layer_to_png() -> None:
     """Convert required layer gerber files to PNGs"""
     logger.info("Converting all layers to PNG. ")
 
     files_names_list = get_gerbers_to_convert_to_png()
-    map_input_list = [
-        [file, file, HEX_WHITE, "#000000ff"]
-        for file in files_names_list
-        if "Fab" not in file
-    ]
+    map_input_list = [(file, file, HEX_WHITE, "#000000ff") for file in files_names_list if "Fab" not in file]
     # Make silks and mask for dispmap
     map_input_list.extend(
         [
@@ -246,7 +236,7 @@ def do_convert_layer_to_png():
         p.map(partial(gbr_png_convert), map_input_list)
 
 
-def do_crop_pngs():
+def do_crop_pngs() -> None:
     """Crop generated PNGs based on trim data generated from edge cuts"""
     logger.info("Cropping all pngs. ")
 
@@ -260,36 +250,24 @@ def do_crop_pngs():
         crop_offset[3],
     )
 
-    map_input_list = [
-        file
-        for file in os.listdir(config.png_path)
-        if os.path.isfile(config.png_path + file)
-    ]
+    map_input_list = [file for file in os.listdir(config.png_path) if os.path.isfile(config.png_path + file)]
     for file in map_input_list:
         crop_png(file, crop_offset)
 
 
-def do_generate_displacement_maps():
+def do_generate_displacement_maps() -> None:
     """Generate the displacement maps"""
     logger.info("Building displacement maps.")
 
     # Prepare transparent holes pngs
-    copy_file(
-        config.png_path, config.png_path, GBR_PTH + ".png", TMP_ALPHAW_PTH + ".png"
-    )
-    copy_file(
-        config.png_path, config.png_path, GBR_NPTH + ".png", TMP_ALPHAW_NPTH + ".png"
-    )
+    copy_file(config.png_path, config.png_path, GBR_PTH + ".png", TMP_ALPHAW_PTH + ".png")
+    copy_file(config.png_path, config.png_path, GBR_NPTH + ".png", TMP_ALPHAW_NPTH + ".png")
     wand_operation(TMP_ALPHAW_PTH, fuzz=75, transparency="white", blur=[1, 8])
     wand_operation(TMP_ALPHAW_NPTH, fuzz=75, transparency="white", blur=[1, 8])
 
     # Prepare transparent mask pngs
-    wand_operation(
-        GBR_F_MASK, out_file=TMP_ALPHAB_F_MASK, fuzz=75, transparency="black"
-    )
-    wand_operation(
-        GBR_B_MASK, out_file=TMP_ALPHAB_B_MASK, fuzz=75, transparency="black"
-    )
+    wand_operation(GBR_F_MASK, out_file=TMP_ALPHAB_F_MASK, fuzz=75, transparency="black")
+    wand_operation(GBR_B_MASK, out_file=TMP_ALPHAB_B_MASK, fuzz=75, transparency="black")
     wand_operation(TMP_F_MASK, transparency="black", blur=[0, 3])
     wand_operation(TMP_B_MASK, transparency="black", blur=[0, 3])
 
@@ -308,7 +286,7 @@ def do_generate_displacement_maps():
     add_pngs(OUT_B_DISPMAP, png_list, out=OUT_B_DISPMAP)
 
 
-def get_gerbers_to_convert_to_png():
+def get_gerbers_to_convert_to_png() -> List[str]:
     """Get a list of .gbr files that need to be converted to PNG"""
     # Prepare data to convert GBR -> SVG
     files_names_list = list()  # list of gbr files to convert;
@@ -326,7 +304,7 @@ def get_gerbers_to_convert_to_png():
 ########################################
 
 
-def gbr_png_convert(data: Tuple[str, str, str, str]):
+def gbr_png_convert(data: Tuple[str, str, str, str]) -> None:
     """Convert gerber file to png with given input name, output name, background and foreground"""
 
     gbr_file_name = data[0] + ".gbr"
@@ -348,12 +326,10 @@ def gbr_png_convert(data: Tuple[str, str, str, str]):
         -o {png_path} --dpi={config.blendcfg['SETTINGS']['DPI']} -a --export=png 2>/dev/null"
     )
     if rc != 0:
-        raise RuntimeError(
-            f"Failed to convert Gerbers to PNG: gerbv returned exit code {rc}"
-        )
+        raise RuntimeError(f"Failed to convert Gerbers to PNG: gerbv returned exit code {rc}")
 
 
-def generate_displacement_map_png(filename: str):
+def generate_displacement_map_png(filename: str) -> None:
     """Prepare displacement map from PNGs"""
 
     gbr_path = config.gbr_path
@@ -371,12 +347,10 @@ def generate_displacement_map_png(filename: str):
         -o {png_path} -a --dpi={config.blendcfg['SETTINGS']['DPI']} --export=png 2> /dev/null"
     )
     if rc != 0:
-        raise RuntimeError(
-            f"Failed to generate displacement map: gerbv returned exit code {rc}"
-        )
+        raise RuntimeError(f"Failed to generate displacement map: gerbv returned exit code {rc}")
 
 
-def mkdir(path: str):
+def mkdir(path: str) -> None:
     """Create a directory at the specified path
 
     Wraps any errors with a nicer error exception.
@@ -387,7 +361,7 @@ def mkdir(path: str):
         raise RuntimeError(f"Could not create folder at path {path}: {repr(e)}")
 
 
-def copy_file(path: str, new_path: str, old_file_name: str, new_file_name: str):
+def copy_file(path: str, new_path: str, old_file_name: str, new_file_name: str) -> None:
     """Copy file from on path to other path with new name"""
 
     if os.path.exists(path + old_file_name):
@@ -395,14 +369,14 @@ def copy_file(path: str, new_path: str, old_file_name: str, new_file_name: str):
         os.sync()
 
 
-def remove_files_with_ext(path: str, ext: str):
+def remove_files_with_ext(path: str, ext: str) -> None:
     """Remove files with given extension from given path"""
     file_list = [file for file in os.listdir(path) if file.endswith(ext)]
     for file in file_list:
         os.remove(path + file)
 
 
-def gbr_to_svg_convert(file_name: str):
+def gbr_to_svg_convert(file_name: str) -> None:
     """Convert gerber file to svg"""
     gbr_path = config.gbr_path
     svg_path = config.svg_path
@@ -418,12 +392,10 @@ def gbr_to_svg_convert(file_name: str):
         -o {svg_file_path} --export=svg 2>/dev/null"
     )
     if rc != 0:
-        raise RuntimeError(
-            f"Failed to convert Gerbers to SVG: gerbv returned exit code {rc}"
-        )
+        raise RuntimeError(f"Failed to convert Gerbers to SVG: gerbv returned exit code {rc}")
 
 
-def correct_frame_in_svg(data, frame, frame_lines):
+def correct_frame_in_svg(data: str, frame: str, frame_lines: List[str]) -> None:
     """Correct dimension of svg file based on edge cuts layer"""
     file_path = config.svg_path + data + ".svg"
     if not os.path.exists(file_path):
@@ -440,7 +412,7 @@ def correct_frame_in_svg(data, frame, frame_lines):
         handle.write("\n".join(corrected_svg))
 
 
-def inkscape_path_union(file_path: str):
+def inkscape_path_union(file_path: str) -> None:
     """Run Inkscape command"""
     if not os.path.exists(file_path):
         return
@@ -448,17 +420,13 @@ def inkscape_path_union(file_path: str):
         f'inkscape --actions="select-all;object-stroke-to-path;path-union;export-filename:{file_path};export-do" {file_path}'
     )
     if rc != 0:
-        raise RuntimeError(
-            f"Failed to generate path union: inkscape returned exit code {rc}"
-        )
+        raise RuntimeError(f"Failed to generate path union: inkscape returned exit code {rc}")
 
 
 def get_edge_trim_data() -> List[int]:
     """Calculate trim offset for PNGs"""
 
-    with Image(
-        filename=os.path.join(config.png_path, GBR_EDGE_CUTS + ".png")
-    ) as edge_cuts_png:
+    with Image(filename=os.path.join(config.png_path, GBR_EDGE_CUTS + ".png")) as edge_cuts_png:
         edge_cuts_png.trim()
 
         count_edge = 0
@@ -479,7 +447,7 @@ def get_edge_trim_data() -> List[int]:
         return trims
 
 
-def crop_png(file: str, crop_offset: List[int]):
+def crop_png(file: str, crop_offset: List[int]) -> None:
     """Crop PNG using calculated offset"""
 
     image_path = os.path.join(config.png_path, file)
@@ -511,7 +479,7 @@ def wand_operation(
     fuzz: int = 0,
     transparency: str = "",
     blur: List[int] = [],
-):
+) -> None:
     """Imagemagick-like operation"""
 
     image_path = config.png_path + in_file + ".png"
@@ -520,9 +488,7 @@ def wand_operation(
     with Image(filename=image_path) as png:
         percent_fuzz = int(png.quantum_range * fuzz / 100)
         if transparency is not None:
-            png.transparent_color(
-                color=Color(transparency), alpha=0.0, fuzz=percent_fuzz
-            )
+            png.transparent_color(color=Color(transparency), alpha=0.0, fuzz=percent_fuzz)
         if len(blur) >= 2:
             png.blur(blur[0], blur[1])
         if out_file is None:
@@ -530,7 +496,7 @@ def wand_operation(
         png.save(filename=config.png_path + out_file + ".png")
 
 
-def add_pngs(in1, in_list, out):
+def add_pngs(in1: str, in_list: List[str], out: str) -> None:
     """Join PNGs on one another"""
 
     with Image(filename=config.png_path + in1 + ".png") as png:
@@ -544,7 +510,7 @@ def add_pngs(in1, in_list, out):
         png.save(filename=config.png_path + out + ".png")
 
 
-def prepare_silks(in_file, out_file):
+def prepare_silks(in_file: str, out_file: str) -> None:
     """Prepare transparent silks pngs + set silks alpha"""
 
     with Image(filename=config.png_path + in_file + ".png") as png:

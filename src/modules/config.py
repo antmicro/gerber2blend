@@ -2,8 +2,9 @@ import os
 from os import getcwd, path
 import modules.fileIO as fio
 import core.blendcfg
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 import logging
+import argparse
 
 # displacement map outputs from gerber -> png conversion
 OUT_F_DISPMAP = "F_dispmap"
@@ -34,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 CWD: str = ""
 blendcfg: Dict[str, Any] = {}
-args: str = ""
+args: argparse.Namespace
 g2b_dir_path: str = ""
 png_path: str = ""
 gbr_path: str = ""
@@ -46,12 +47,12 @@ model_library_path: str = ""
 PCB_name: str = ""
 fab_path: str = ""
 prj_path: str = ""
-stackup_data: str = ""
-pcbthickness: str = ""
-pcbscale: str = ""
+stackup_data: List[Tuple[str, float]] = []
+pcbthickness: float = 0.0
+pcbscale: float = 0.0
 
 
-def init_global(arguments):
+def init_global(arguments: argparse.Namespace) -> None:
     """Initialize global variables used across modules
 
     Args:
@@ -76,7 +77,7 @@ def init_global(arguments):
     args = arguments
 
 
-def configure_paths(arguments):
+def configure_paths(arguments: argparse.Namespace) -> None:
     """Configure global paths that will be searched for HW files
 
     Args:
@@ -97,8 +98,7 @@ def configure_paths(arguments):
     if not os.path.isdir(fab_path):
         raise RuntimeError(
             "There is no %s/ directory in the current working directory! (%s)"
-            % blendcfg["SETTINGS"]["GERBER_DIR"],
-            prj_path,
+            % (blendcfg["SETTINGS"]["GERBER_DIR"], prj_path)
         )
 
     # Determine the name of the PCB to use as a name for the .blend
@@ -119,7 +119,7 @@ def configure_paths(arguments):
     mat_library_path = model_library_path + "/lib/materials/pcb_materials.blend"
 
 
-def configure_constants(arguments):
+def configure_constants(arguments: argparse.Namespace) -> None:
     """Configure common constants
 
     Args:

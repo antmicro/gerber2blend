@@ -15,8 +15,8 @@ import modules.config as config
 logger = logging.getLogger(__name__)
 
 
-def parse_args():
-    def formatter(prog):
+def parse_args() -> argparse.Namespace:
+    def formatter(prog: str) -> argparse.HelpFormatter:
         return argparse.HelpFormatter(prog, max_help_position=35)
 
     parser = argparse.ArgumentParser(
@@ -60,7 +60,7 @@ def parse_args():
     return parser.parse_args(args=arguments)
 
 
-def import_python_submodules():
+def import_python_submodules() -> None:
     """Import all available extension Python submodules from the environment"""
     # Look in the `modules` directory under site-packages
     modules_path = os.path.join(os.path.dirname(__file__), "modules")
@@ -86,11 +86,7 @@ def find_module(name: str) -> Optional[type]:
 
         for subname, subobj in inspect.getmembers(obj):
             uppercase_name = subname.upper()
-            if (
-                inspect.isclass(subobj)
-                and issubclass(subobj, core.module.Module)
-                and name == uppercase_name
-            ):
+            if inspect.isclass(subobj) and issubclass(subobj, core.module.Module) and name == uppercase_name:
                 logger.debug("Found module: %s in %s", subname, obj)
                 return subobj
 
@@ -127,7 +123,7 @@ def create_modules(config: list[dict[Any, Any]]) -> list[core.module.Module]:
     return runnable_modules
 
 
-def run_modules_for_config(conf: dict[Any, Any]):
+def run_modules_for_config(conf: dict[Any, Any]) -> None:
     """Run all module processing jobs for the specified blendcfg.yml"""
     modules = create_modules(conf["STAGES"])
 
@@ -138,7 +134,7 @@ def run_modules_for_config(conf: dict[Any, Any]):
         logger.info("Finished running: %s", job)
 
 
-def main():
+def main() -> None:
     args = parse_args()
 
     if args.blend_path and not path.isfile(args.blend_path):

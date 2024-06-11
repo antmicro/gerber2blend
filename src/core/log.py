@@ -19,14 +19,14 @@ class CustomFormatter(logging.Formatter):
         logging.CRITICAL: bold_red + format_str + reset,
     }
 
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         datefmt = "%H:%M:%S"  # "%d.%m.%Y %H:%M:%S"
         log_fmt = self.FORMATS.get(record.levelno)
         formatter = logging.Formatter(log_fmt, datefmt)
         return formatter.format(record)
 
 
-def set_logging(use_debug):
+def set_logging(use_debug: bool) -> None:
     """Configure loggers to use a custom formatter for highlighting
     the log level.
     """

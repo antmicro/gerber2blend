@@ -1,31 +1,32 @@
-import bpy  # type: ignore
-import bmesh  # type: ignore
-from mathutils import Vector, kdtree  # type: ignore
+import bpy
+import bmesh
+from mathutils import Vector, kdtree
 import logging
+from typing import List, Tuple, Any
 
 logger = logging.getLogger(__name__)
 
 
-def get_vertices(obj, precision=0):
+def get_vertices(mesh: bpy.types.Mesh, precision: int = 0) -> List[Tuple[Any, ...]]:
     """Return list of object's vertices with float precision =-1"""
 
-    verts = [vert.co for vert in obj.data.vertices]
-    plain_verts = [vert.to_tuple(precision) for vert in verts]
+    verts = [vert.co for vert in mesh.vertices]
+    plain_verts = [Vector(vert).to_tuple(precision) for vert in verts]  # type: ignore [no-untyped-call]
     return plain_verts
 
 
-def make_kd_tree(verts):
+def make_kd_tree(verts: List[Tuple[float]]) -> kdtree.KDTree:
     """Return K-D tree of model vertices"""
 
     main_list = list(verts)
-    kd = kdtree.KDTree(len(main_list))
+    kd = kdtree.KDTree(len(main_list))  # type: ignore
     for i, v in enumerate(main_list):
         kd.insert(v, i)
-    kd.balance()
+    kd.balance()  # type: ignore
     return kd
 
 
-def get_verts_difference(main_set, remove_set):
+def get_verts_difference(main_set: List[Tuple[float]], remove_set: List[Tuple[float]]) -> List[Tuple[float]]:
     """Remove set of vertices from another set"""
 
     main_list = list(main_set)
@@ -41,7 +42,7 @@ def get_verts_difference(main_set, remove_set):
     return main_list
 
 
-def verts_in(kd, add_set):
+def verts_in(kd: kdtree.KDTree, add_set: List[Vector]) -> bool:
     """Check if there are common vertices for two sets (using previously created kdtree)"""
 
     for vert in add_set:
@@ -52,7 +53,7 @@ def verts_in(kd, add_set):
     return False
 
 
-def get_bbox(obj, arg):
+def get_bbox(obj: bpy.types.Object, arg: str) -> list[Any | Vector]:
     """Gets bbox of an object
     Arguments:
     'centre' - finds current center point of the model
@@ -62,19 +63,20 @@ def get_bbox(obj, arg):
 
     bpy.ops.object.select_all(action="DESELECT")
     bpy.context.view_layer.objects.active = obj
-    bbox_vert = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
+    bbox_vert = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]  # type:ignore
     if arg == "centre":
-        centre = sum(bbox_vert, Vector())
+        centre = sum(bbox_vert, Vector())  # type:ignore
         centre /= 8
-        return centre
+        return [centre]
     elif arg == "2d":
         corner2d = [corner.to_2d() for corner in bbox_vert]
         return corner2d[::2]
     elif arg == "3d":
         return bbox_vert
+    raise RuntimeError("Incorrect bbox input argument")
 
 
-def recalc_normals(obj):
+def recalc_normals(obj: bpy.types.Object) -> None:
     """Recalculate normals in object"""
 
     obj.select_set(True)
@@ -86,47 +88,47 @@ def recalc_normals(obj):
     bpy.ops.object.select_all(action="DESELECT")
 
 
-def face_sel(obj, pos, edge_verts=[]):
+def face_sel(obj: bpy.types.Object, pos: str, edge_verts: List[Tuple[float]] = []) -> None:
     """Select faces facing specified direction (top, bottom, edge)"""
 
     bpy.context.view_layer.objects.active = obj
+    assert isinstance(obj.data, bpy.types.Mesh)
     mesh = obj.data
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_mode(type="FACE")
     bm = bmesh.from_edit_mesh(mesh)
-    bm.faces.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()  # type: ignore
     kd = make_kd_tree(edge_verts)
     for face in obj.data.polygons:
         if pos == "edge":
             # check vertical faces
-            if abs(face.normal.z) <= 0.5:
+            if abs(Vector(face.normal).z) <= 0.5:  # type: ignore
                 # check if face contains vertices from list
                 face_edges = []
                 for ind in face.vertices:
                     face_edges.append(obj.data.vertices[ind].co)
-                if verts_in(kd, face_edges):
+                if verts_in(kd, face_edges):  # type: ignore
                     bm.faces[face.index].select = True
         elif pos == "top":
-            bm.faces[face.index].select = face.normal.z > 0.5
+            bm.faces[face.index].select = Vector(face.normal).z > 0.5  # type: ignore
         elif pos == "bot":
-            bm.faces[face.index].select = face.normal.z < -0.5
+            bm.faces[face.index].select = Vector(face.normal).z < -0.5  # type: ignore
         else:
             logger.error("Specify pos")
     bmesh.update_edit_mesh(mesh)
 
 
-def face_desel(obj):
+def face_desel(mesh: bpy.types.Mesh) -> None:
     """Deselect all faces"""
 
-    mesh = obj.data
     bpy.ops.object.mode_set(mode="EDIT")
     bm = bmesh.from_edit_mesh(mesh)
-    bm.faces.ensure_lookup_table()
-    for face in obj.data.polygons:
+    bm.faces.ensure_lookup_table()  # type: ignore
+    for face in mesh.polygons:
         bm.faces[face.index].select = False
 
 
-def create_collection(name):
+def create_collection(name: str) -> Any:
     """Create and link objects to collection"""
 
     if not bpy.data.collections.get(name):
@@ -135,7 +137,7 @@ def create_collection(name):
     return bpy.data.collections.get(name)
 
 
-def remove_collection(name):
+def remove_collection(name: str) -> None:
     """Remove collection"""
 
     remCol = bpy.context.scene.collection.children.get(name)
@@ -143,15 +145,14 @@ def remove_collection(name):
         bpy.data.collections.remove(remCol)
 
 
-def link_obj_to_collection(obj, target_coll):
+def link_obj_to_collection(obj: bpy.types.Object, target_coll: bpy.types.Collection) -> None:
     """Loop through all collections the obj is linked to and unlink it from there, then link to targed collection"""
-
-    for coll in obj.users_collection:
+    for coll in obj.users_collection:  # type: ignore
         coll.objects.unlink(obj)
     target_coll.objects.link(obj)
 
 
-def apply_all_transform_obj(obj):
+def apply_all_transform_obj(obj: bpy.types.Object) -> None:
     """Apply all object transfromations"""
 
     obj.select_set(True)
@@ -159,7 +160,7 @@ def apply_all_transform_obj(obj):
     obj.select_set(False)
 
 
-def save_pcb_blend(path, apply_transforms=False):
+def save_pcb_blend(path: str, apply_transforms: bool = False) -> None:
     """Save blendfile"""
 
     bpy.ops.file.pack_all()

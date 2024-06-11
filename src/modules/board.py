@@ -1,5 +1,5 @@
-import bpy  # type: ignore
-import bmesh  # type:ignore
+import bpy
+import bmesh
 import core.module
 from typing import List, Tuple
 import modules.config as config
@@ -14,13 +14,14 @@ from modules.config import (
     GBR_B_CU,
 )
 from os import listdir, path
-from mathutils import Vector  # type: ignore
+from mathutils import Vector
 from modules.materials import (
     process_materials,
     process_edge_materials,
     clear_empty_material_slots,
 )
 import logging
+from typing import Optional, cast, Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 class Board(core.module.Module):
     """Board processing module"""
 
-    def execute(self):
+    def execute(self) -> None:
         if path.isfile(config.pcb_blend_path) and not config.args.regenerate:
             logger.info(
                 f"Board model already exists at {config.pcb_blend_path}. "
@@ -44,7 +45,7 @@ class Board(core.module.Module):
 ########################################
 
 
-def make_board():
+def make_board() -> bpy.types.Object:
     """Main board mesh generation function"""
 
     logger.info("Generating board")
@@ -59,13 +60,16 @@ def make_board():
     empty_obj = bpy.data.objects.new(config.PCB_name, bbox_mesh)
 
     # preparing meshes for outline and holes
-    pcb = prepare_mesh(
+    pcb: bpy.types.Object | None = prepare_mesh(
         "PCB_layer1",
         config.svg_path + GBR_EDGE_CUTS + ".svg",
         True,
         0.0,
         config.pcbscale,
     )
+    if pcb is None:
+        return empty_obj
+    assert isinstance(pcb.data, bpy.types.Mesh)
     cu.link_obj_to_collection(pcb, board_col)
     cu.recalc_normals(pcb)
 
@@ -87,21 +91,20 @@ def make_board():
 
     offset_to_center = Vector(
         [
-            cu.get_bbox(pcb, "centre").x,
-            cu.get_bbox(pcb, "centre").y,
+            cu.get_bbox(pcb, "centre")[0].x,
+            cu.get_bbox(pcb, "centre")[0].y,
             0,
         ]
-    )
+    )  # type: ignore
 
     # move pcb and holes to center; move holes below Z
-    if pcb:
-        pcb.location -= offset_to_center
+    pcb.location -= offset_to_center  # type:ignore
     if pth:
-        pth.location -= offset_to_center
-        pth.location += Vector([0, 0, -0.1])
+        pth.location -= offset_to_center  # type:ignore
+        pth.location += Vector([0, 0, -0.1])  # type: ignore
     if npth:
-        npth.location -= offset_to_center
-        npth.location += Vector([0, 0, -0.1])
+        npth.location -= offset_to_center  # type:ignore
+        npth.location += Vector([0, 0, -0.1])  # type: ignore
 
     # put origin point in the middle of PCB
     pcb.select_set(True)
@@ -116,20 +119,19 @@ def make_board():
     pcb.select_set(False)
 
     # holes boolean diff
-    if pcb:
-        if npth:
-            logger.info("Cutting NPTH holes in board.")
-            logger.warning("This operation may take a while!")
-            boolean_diff(pcb, npth)
-        # list of bare pcb edges vertices
-        bare_pcb_verts = cu.get_vertices(pcb, 4)
-        if pth:
-            logger.info("Cutting PTH holes in board.")
-            logger.warning("This operation may take a while!")
-            boolean_diff(pcb, pth)
-        all_pcb_verts = cu.get_vertices(pcb, 4)
-        # list of plated pcb edges vertices
-        plated_pcb_verts = cu.get_verts_difference(all_pcb_verts, bare_pcb_verts)
+    if npth:
+        logger.info("Cutting NPTH holes in board.")
+        logger.warning("This operation may take a while!")
+        boolean_diff(pcb, npth)
+    # list of bare pcb edges vertices
+    bare_pcb_verts = cu.get_vertices(pcb.data, 4)
+    if pth:
+        logger.info("Cutting PTH holes in board.")
+        logger.warning("This operation may take a while!")
+        boolean_diff(pcb, pth)
+    all_pcb_verts = cu.get_vertices(pcb.data, 4)
+    # list of plated pcb edges vertices
+    plated_pcb_verts = cu.get_verts_difference(all_pcb_verts, bare_pcb_verts)  # type: ignore
 
     logger.debug(f"Number of verts on bare board edges: {len(bare_pcb_verts)}")
     logger.debug(f"Number of verts on plated board edges: {len(plated_pcb_verts)}")
@@ -144,7 +146,7 @@ def make_board():
     map_PCB_to_UV(pcb)
 
     # add materials to board edges
-    process_edge_materials(pcb, plated_pcb_verts, bare_pcb_verts)
+    process_edge_materials(pcb, plated_pcb_verts, bare_pcb_verts)  # type: ignore
 
     if config.blendcfg["EFFECTS"]["STACKUP"]:
         logger.info("Creating layers (" + str(len(In_list)) + ")")
@@ -153,13 +155,11 @@ def make_board():
             # now original is selected
             bpy.ops.object.duplicate()
             # now duplicate is selected
-            new_obj = bpy.context.selected_objects[0]
+            new_obj = bpy.context.selected_objects[0]  # type:ignore
             new_obj.name = "PCB_layer" + str(i + 2)
-            logging.debug(
-                f"Created layer {new_obj.name} at Z={sum(layer_thickness[0 : i + 1])}"
-            )
+            logging.debug(f"Created layer {new_obj.name} at Z={sum(layer_thickness[0 : i + 1])}")
             cu.link_obj_to_collection(new_obj, board_col)
-            new_obj.location += Vector((0, 0, sum(layer_thickness[0 : i + 1])))
+            new_obj.location += Vector((0, 0, sum(layer_thickness[0 : i + 1])))  # type: ignore
             bpy.ops.object.select_all(action="DESELECT")
 
     process_materials(board_col, In_list)
@@ -174,9 +174,9 @@ def make_board():
     # board measurements
     logger.info(
         "Board dimensions: x:"
-        + str(pcb.dimensions.x)
+        + str(Vector(pcb.dimensions).x)  # type: ignore
         + " y:"
-        + str(pcb.dimensions.y)
+        + str(Vector(pcb.dimensions).y)  # type: ignore
         + " z:"
         + str(stk.get().thickness)
     )
@@ -200,14 +200,14 @@ def make_board():
     # seperate layers
     thickness_sum = 0.0
     found_dielectric = 0
-    sorted_layers = sorted(empty_obj.children, key=lambda x: int(x.name[9:]))
+    sorted_layers = sorted(empty_obj.children, key=lambda x: int(x.name[9:]))  # type:ignore
     layers_count = len(sorted_layers)
     if config.blendcfg["EFFECTS"]["STACKUP"]:
         for layer, thick in stk.get().stackup_data[::-1]:
             if thick is None or found_dielectric > layers_count - 1:
                 continue
             if "dielectric" in layer or "Mask" in layer:
-                sorted_layers[found_dielectric].location.z += thickness_sum
+                Vector(sorted_layers[found_dielectric].location).z += thickness_sum  # type:ignore
                 found_dielectric += 1
             else:
                 thickness_sum += thick
@@ -258,9 +258,7 @@ def generate_inner_layer_list() -> Tuple[List[str], List[float]]:
     stk_data = stk.get().stackup_data
     if not stk_data:
         # When no stackup data is provided, divide the configured PCB thickness evenly
-        all_layer_thickness = [
-            stk.get().thickness / (len(All_list) + 1) for _ in range(len(All_list) + 1)
-        ]
+        all_layer_thickness = [stk.get().thickness / (len(All_list) + 1) for _ in range(len(All_list) + 1)]
     else:
         # Find the thickness of "dielectric <N>" entries in the stackup and sort
         # based on their names. This is used as the thickness of the inner layers.
@@ -291,7 +289,7 @@ def generate_inner_layer_list() -> Tuple[List[str], List[float]]:
 # board UV mapping
 
 
-def getArea_byType(Type):
+def getArea_byType(Type: str) -> Optional[bpy.types.Area]:
     """Get area for context override"""
 
     for screen in bpy.context.workspace.screens:
@@ -301,16 +299,19 @@ def getArea_byType(Type):
     return None
 
 
-def map_PCB_to_UV(pcb):
+def map_PCB_to_UV(pcb: bpy.types.Object) -> None:
     """PCB surfaces UV mapping function"""
 
-    for ns3d in getArea_byType("VIEW_3D").spaces:
+    area3d = getArea_byType("VIEW_3D")
+    if area3d is None:
+        return
+    for ns3d in area3d.spaces:
         if ns3d.type == "VIEW_3D":
             break
+    assert isinstance(ns3d, bpy.types.SpaceView3D)
     win = bpy.context.window
     scr = win.screen
-    areas3d = [getArea_byType("VIEW_3D")]
-    region = [region for region in areas3d[0].regions if region.type == "WINDOW"]
+    region = [region for region in area3d.regions if region.type == "WINDOW"]
 
     override = {
         "window": win,
@@ -349,11 +350,12 @@ def map_PCB_to_UV(pcb):
 # board generation
 
 
-def boolean_diff(obj, tool):
+def boolean_diff(obj: bpy.types.Object, tool: bpy.types.Object) -> None:
     """Apply boolean diff modifier on object and remove the tool and artifacts afterwards"""
 
     # define boolean operation
     bool = obj.modifiers.new(name="diff", type="BOOLEAN")
+    assert isinstance(bool, bpy.types.BooleanModifier)
     bool.operation = "DIFFERENCE"
     # set tool objects
     bool.object = tool
@@ -367,7 +369,7 @@ def boolean_diff(obj, tool):
     clean_bool_diff_artifacts(obj)
 
 
-def clean_outline(mesh):
+def clean_outline(mesh: bpy.types.Object) -> None:
     """Import outline from edgecuts"""
 
     bpy.context.view_layer.objects.active = mesh
@@ -380,7 +382,7 @@ def clean_outline(mesh):
     bpy.ops.object.select_all(action="DESELECT")
 
 
-def extrude_mesh(obj, height):
+def extrude_mesh(obj: bpy.types.Object, height: float) -> None:
     """Extrude flat mesh using specified height"""
 
     if height > 0.0:
@@ -388,14 +390,12 @@ def extrude_mesh(obj, height):
         obj.select_set(True)
         bpy.ops.object.mode_set(mode="EDIT")
         bpy.ops.mesh.select_all(action="SELECT")
-        bpy.ops.mesh.extrude_region_move(
-            TRANSFORM_OT_translate={"value": (0, 0, height)}
-        )
+        bpy.ops.mesh.extrude_region_move(TRANSFORM_OT_translate={"value": (0, 0, height)})
         bpy.ops.object.mode_set(mode="OBJECT")
         bpy.ops.object.select_all(action="DESELECT")
 
 
-def import_svg(name, filepth):
+def import_svg(name: str, filepth: str) -> Optional[bpy.types.Object]:
     """Import curve from SVG vector file"""
 
     if not path.exists(filepth):
@@ -406,28 +406,26 @@ def import_svg(name, filepth):
     for obj in bpy.data.collections[svgname].all_objects:
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
-    curve_count = len(bpy.context.selected_objects)
-    logger.info(
-        "Importing SVG from " + svgname + " (curve count: " + str(curve_count) + ")"
-    )
+    curve_count = len(bpy.context.selected_objects)  # type:ignore
+    logger.info("Importing SVG from " + svgname + " (curve count: " + str(curve_count) + ")")
     if curve_count != 0:
         bpy.ops.object.convert(target="MESH")
         bpy.ops.object.join()
-        new_obj = bpy.context.selected_objects[0]
+        new_obj = bpy.context.selected_objects[0]  # type:ignore
         new_obj.name = name
         return_obj = new_obj
     return return_obj
 
 
-def prepare_mesh(name, svg_path, clean, height, scale):
+def prepare_mesh(name: str, svg_path: str, clean: bool, height: float, scale: float) -> Optional[bpy.types.Object]:
     """Prepare mesh from imported curve"""
 
     bpy.ops.object.select_all(action="DESELECT")
-    obj = import_svg(name, svg_path)
+    obj: bpy.types.Object | None = import_svg(name, svg_path)
     if obj is not None:
         if clean:
             clean_outline(obj)
-        obj.scale = scale * Vector(obj.scale)
+        obj.scale = scale * Vector(obj.scale)  # type: ignore
         obj.select_set(True)
         bpy.context.view_layer.objects.active = obj
         bpy.ops.object.transform_apply(
@@ -443,18 +441,20 @@ def prepare_mesh(name, svg_path, clean, height, scale):
         logger.info("Mesh for " + name + " created.")
     else:
         logger.warning("No mesh created for " + name + ".")
+        return None
     return obj
 
 
-def clean_bool_diff_artifacts(pcb):
+def clean_bool_diff_artifacts(pcb: bpy.types.Object) -> None:
     """Remove vertices that are not on Z=0 (those vertices are created by corrupted boolean diff operation)"""
 
     bpy.ops.object.mode_set(mode="EDIT")
+    assert isinstance(pcb.data, bpy.types.Mesh)
     mesh_obj = bmesh.from_edit_mesh(pcb.data)
-    logging.debug(f"Initial count of vertices in mesh: {len(mesh_obj.verts)}")
-    verts = [v for v in mesh_obj.verts if abs(float(v.co[2])) > 0]
+    logging.debug(f"Initial count of vertices in mesh: {len(mesh_obj.verts)}")  # type:ignore
+    verts = [v for v in cast(Iterable[bmesh.types.BMVert], mesh_obj.verts) if abs(float(v.co[2])) > 0]
     bmesh.ops.delete(mesh_obj, geom=verts, context="VERTS")
     bmesh.update_edit_mesh(pcb.data)
     logging.debug(f"Number of corrupted vertices to remove: {len(verts)}")
-    logging.debug(f"Final count of vertices in mesh: {len(mesh_obj.verts)}")
+    logging.debug(f"Final count of vertices in mesh: {len(mesh_obj.verts)}")  # type:ignore
     bpy.ops.object.mode_set(mode="OBJECT")
