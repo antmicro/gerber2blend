@@ -56,7 +56,7 @@ def _load_stackup_from_file() -> StackupInfo:
 
 
 @functools.cache
-def _parse_stackup_from_file(file_path) -> Tuple[float, List[Tuple[str, float]]]:
+def _parse_stackup_from_file(file_path: str) -> Tuple[float, List[Tuple[str, float]]]:
     """Parse the stackup data from the given JSON file
 
     Returns:
@@ -74,10 +74,7 @@ def _parse_stackup_from_file(file_path) -> Tuple[float, List[Tuple[str, float]]]
             with open(file_path) as stackup_json_file:
                 stackup_json_data = json.load(stackup_json_file)
 
-            stackup_data = [
-                (layer["name"], layer["thickness"])
-                for layer in stackup_json_data["layers"]
-            ]
+            stackup_data = [(layer["name"], layer["thickness"]) for layer in stackup_json_data["layers"]]
             calculated_thickness = 0.0
             for layer in stackup_json_data["layers"]:
                 if layer["thickness"] is not None:

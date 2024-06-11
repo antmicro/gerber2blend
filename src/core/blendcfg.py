@@ -1,8 +1,9 @@
 import logging
-from typing import Any, Callable, Dict, Optional
-import yaml
-from shutil import copyfile
 import os.path
+from shutil import copyfile
+from typing import Any, Callable, Dict, Optional
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +39,10 @@ class Field:
         self.optional = optional
 
 
-def check_and_copy_blendcfg(file_path, g2b_path):
+def check_and_copy_blendcfg(file_path: str, g2b_path: str) -> None:
     if not os.path.exists(file_path + BLENDCFG_FILENAME):
         logger.warning("Config file not found, copying default template")
-        copyfile(
-            g2b_path + "/templates/" + BLENDCFG_FILENAME, file_path + BLENDCFG_FILENAME
-        )
+        copyfile(g2b_path + "/templates/" + BLENDCFG_FILENAME, file_path + BLENDCFG_FILENAME)
 
 
 def is_color(arg: str | None) -> bool:
@@ -66,7 +65,9 @@ def is_color_preset(arg: str | list[str] | None) -> bool:
     return False
 
 
-def is_top_bottom(arg) -> bool:
+def is_top_bottom(arg: None | list[str]) -> bool:
+    if arg is None:
+        return False
     first = arg[0] == "True"
     if first and len(arg) == 1:
         return False  # missing backgrounds to use
@@ -74,7 +75,9 @@ def is_top_bottom(arg) -> bool:
     return all([bg in correct_bg for bg in arg[1:]])
 
 
-def is_transition(arg) -> bool:
+def is_transition(arg: None | list[str]) -> bool:
+    if arg is None:
+        return False
     first = arg[0] == "True"
     if first and len(arg) == 1:
         return False  # missing backgrounds to use
@@ -83,7 +86,7 @@ def is_transition(arg) -> bool:
 
 
 # parse color
-def hex_to_rgba(hex, alpha: bool = True):
+def hex_to_rgba(hex: str, alpha: bool = True) -> tuple[float, ...]:
     rgb = []
     for i in (0, 2, 4):
         decimal = int(hex[i : i + 2], 16)
@@ -93,14 +96,7 @@ def hex_to_rgba(hex, alpha: bool = True):
     return tuple(rgb)
 
 
-def parse_true_false(arg):
-    # change first to bool, rest remains as list of strings
-    tmp = arg.replace(",", "").split()
-    tmp[0] = True if tmp[0] == "True" else False
-    return tmp
-
-
-def parse_strings(arg):
+def parse_strings(arg: str) -> list[str]:
     tmp = arg.replace(",", "").split()
     return tmp
 
@@ -136,7 +132,7 @@ CONFIGURATION_SCHEMA = {
 }
 
 
-def check_throw_error(cfg, args, schema: Field):
+def check_throw_error(cfg: Dict[str, Any], args: list[str], schema: Field) -> None:
     """Validate the given configuration entry
 
     Args:
@@ -148,8 +144,18 @@ def check_throw_error(cfg, args, schema: Field):
     """
     missing_config = False
     val = None
+    if cfg is None:
+        missing_config = True
+
+    if len(args) < 2:
+        logger.error(f"[{args[0]}][{args[1]}] not found in {BLENDCFG_FILENAME}")
+        raise RuntimeError("Configuration invalid")
+
     try:
-        val = cfg.get(args[0]).get(args[1])
+        val = cfg.get(args[0], None)
+        if val is None:
+            raise Exception
+        val = val.get(args[1], None)
     except Exception:
         missing_config = True
 
@@ -200,9 +206,7 @@ def check_throw_error(cfg, args, schema: Field):
             raise RuntimeError(f"[{args[0]}][{args[1]}] is not a {schema.type}")
 
 
-def validate_module_config(
-    schema: dict[str, Field], conf: dict[str, Any], module_name: str
-) -> bool:
+def validate_module_config(schema: dict[str, Field], conf: dict[str, Any], module_name: str) -> bool:
     """Validates the module config against a given schema
 
     Returns:
@@ -221,15 +225,17 @@ def validate_module_config(
     return valid
 
 
-def validate_setting_dependencies(cfg):
+def validate_setting_dependencies(cfg: Any) -> None:
     """Validate if certain blendcfg.yaml settings have their required dependencies"""
+    _ = cfg
+    pass
     # Left empty on purpose
     # If required, this can be expanded to include additional validation
     # for blencfg.yaml configuration entries, for example: a setting depends
     # on a different setting to be enabled.
 
 
-def check_and_parse_blendcfg(cfg) -> Dict[str, Any]:
+def check_and_parse_blendcfg(cfg: Dict[str, Any]) -> Dict[str, Any]:
     """Validate and parse the blendcfg.yaml loaded from a file"""
 
     valid = True
@@ -250,7 +256,7 @@ def check_and_parse_blendcfg(cfg) -> Dict[str, Any]:
     return cfg
 
 
-def open_blendcfg(path, config_preset) -> Dict[str, Any]:
+def open_blendcfg(path: str, config_preset: str) -> Dict[str, Any]:
     """Open configuration file from the specified path"""
     with open(path + BLENDCFG_FILENAME, "r") as bcfg:
         cfg = yaml.safe_load(bcfg)

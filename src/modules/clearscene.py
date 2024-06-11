@@ -1,15 +1,15 @@
-import bpy  # type: ignore
+import bpy
 import core.module
 
 
 class ClearScene(core.module.Module):
     """Module for clearing the scene"""
 
-    def execute(self):
+    def execute(self) -> None:
         clear_scene()
 
 
-def clear_scene():
+def clear_scene() -> None:
     """Helper method to clear the current scene"""
     for obj in bpy.data.objects:
         bpy.data.objects.remove(obj)
