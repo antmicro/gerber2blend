@@ -1,3 +1,5 @@
+"""Module responsible for stackup read and parse."""
+
 import json
 from typing import List, Tuple
 import modules.config as config
@@ -10,7 +12,7 @@ logger = logging.getLogger()
 
 
 class StackupInfo:
-    """Stackup information"""
+    """Stackup information."""
 
     stackup_data: List[Tuple[str, float]] = []
     """ Contains layer name <-> layer thickness mappings
@@ -27,7 +29,7 @@ class StackupInfo:
 
 
 def get() -> StackupInfo:
-    """Get the stackup information for the current board project
+    """Get the stackup information for the current board project.
 
     Stackup information is generated based on the blendcfg configuration:
     - If stackup generation is not enabled, the stackup data is generated
@@ -40,7 +42,7 @@ def get() -> StackupInfo:
 
 
 def _load_stackup_from_file() -> StackupInfo:
-    """Load stackup data from file specified in the current configuration"""
+    """Load stackup data from file specified in the current configuration."""
     # read stackup from stackup.json
     filepath = os.path.join(config.fab_path, "stackup.json")
     if config.blendcfg["EFFECTS"]["STACKUP"]:
@@ -57,11 +59,13 @@ def _load_stackup_from_file() -> StackupInfo:
 
 @functools.cache
 def _parse_stackup_from_file(file_path: str) -> Tuple[float, List[Tuple[str, float]]]:
-    """Parse the stackup data from the given JSON file
+    """Parse the stackup data from the given JSON file.
 
-    Returns:
+    Returns
+    -------
         [0]: Calculated thickness of the PCB
         [1]: List of PCB name <-> thickness pairs
+
     """
     stackup_data = []
     calculated_thickness = config.blendcfg["SETTINGS"]["DEFAULT_BRD_THICKNESS"]
@@ -82,8 +86,8 @@ def _parse_stackup_from_file(file_path: str) -> Tuple[float, List[Tuple[str, flo
 
             logger.debug("Found stackup data: " + str(stackup_data))
             logger.debug("Calculated thickness: " + str(calculated_thickness))
-    except Exception:
+    except Exception as e:
         logger.warning("Error while reading stackup.json!", exc_info=True)
-        raise RuntimeError("Could not read stackup.json")
+        raise RuntimeError("Could not read stackup.json") from e
 
     return calculated_thickness, stackup_data

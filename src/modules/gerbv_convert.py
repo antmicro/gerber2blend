@@ -1,4 +1,5 @@
-#!/bin/python3
+"""Module responsible for GBR to SVG and PNG conversion."""
+
 import os
 import shutil
 import logging
@@ -11,7 +12,7 @@ from wand.color import Color  # type: ignore
 import core.module
 import core.blendcfg
 import modules.config as config
-import modules.fileIO as fio
+import modules.file_io as fio
 from modules.config import (
     GBR_IN,
     GBR_PTH,
@@ -47,11 +48,10 @@ logger = logging.getLogger(__name__)
 
 
 class GerbConvert(core.module.Module):
-    """Module to convert gerbers to the required intermediate files"""
+    """Module to convert gerbers to the required intermediate files."""
 
     def execute(self) -> None:
-        """Run the module"""
-
+        """Run the module."""
         do_prepare_build_directory()
         do_convert_gerb_to_svg()
         do_generate_displacement_map_foundation()
@@ -61,7 +61,7 @@ class GerbConvert(core.module.Module):
 
 
 def do_prepare_build_directory() -> None:
-    """Prepare the build directory and populate it with required files
+    """Prepare the build directory and populate it with required files.
 
     This function prepares the fabrication data directory for running board generation.
     Gerbers from the current hardware project (as defined in blendcfg.yaml)
@@ -80,7 +80,7 @@ def do_prepare_build_directory() -> None:
 
     # Name mapping of gerber files
     # This is to allow for using a unified name in all modules.
-    GERB_FILE_RENAMES = {
+    gerb_file_renames = {
         "EDGE_CUTS": GBR_EDGE_CUTS,
         "PTH": GBR_PTH,
         "NPTH": GBR_NPTH,
@@ -100,18 +100,19 @@ def do_prepare_build_directory() -> None:
     #   GERB_FILE_RENAMES[which_input] + <index_of_file> + ".gbr"
     # The files are indexed according to the lexicographical order of
     # their original file names.
-    GERBS_WITH_MANY_FILES = [
+    gerbs_with_many_files = [
         "IN",
     ]
 
     # Check all of the filenames specified in "GERBER_FILENAMES" and
     # move them to the build directory under the above specified names.
     gerbers_missing = False
+    gbr_dir = config.blendcfg["SETTINGS"]["GERBER_DIR"]
     for k, v in config.blendcfg["GERBER_FILENAMES"].items():
         if v is None:
             # Only makes sense to do this with singular gerber files
-            if k not in GERBS_WITH_MANY_FILES:
-                new_path = config.gbr_path + GERB_FILE_RENAMES[k] + ".gbr"
+            if k not in gerbs_with_many_files:
+                new_path = config.gbr_path + gerb_file_renames[k] + ".gbr"
                 logger.info("Gerber file %s missing. Replacing with empty file: %s", k, new_path)
                 fio.touch(new_path)
             continue
@@ -127,13 +128,13 @@ def do_prepare_build_directory() -> None:
                     "Could not find required Gerber %s with pattern: %s in %s/ directory!",
                     k,
                     v,
-                    config.blendcfg["SETTINGS"]["GERBER_DIR"],
+                    gbr_dir,
                 )
                 gerbers_missing = True
             continue
 
         # Handle inputs with many files
-        if k in GERBS_WITH_MANY_FILES:
+        if k in gerbs_with_many_files:
             # Sort the filelist, as glob.glob() does not guarantee a sorted output
             matches = sorted(
                 matches,
@@ -144,42 +145,39 @@ def do_prepare_build_directory() -> None:
                     "Could not find required Gerber %s with pattern: %s in %s/ directory!",
                     k,
                     v,
-                    config.blendcfg["SETTINGS"]["GERBER_DIR"],
+                    gbr_dir,
                 )
                 gerbers_missing = True
             for i in range(0, len(matches)):
                 gerber_path = matches[i]
-                new_name = GERB_FILE_RENAMES[k] + str(i) + ".gbr"
+                new_name = gerb_file_renames[k] + str(i) + ".gbr"
                 new_path = config.gbr_path + new_name
                 logger.info("Found %s%d: %s, saving as: %s", k, i, gerber_path, new_path)
                 shutil.copy(gerber_path, new_path)
             continue
 
         gerber_path = matches[0]
-        new_name = GERB_FILE_RENAMES[k] + ".gbr"
+        new_name = gerb_file_renames[k] + ".gbr"
         new_path = config.gbr_path + new_name
 
         logger.info("Found %s: %s, saving as: %s", k, gerber_path, new_path)
         shutil.copy(gerber_path, new_path)
 
     if gerbers_missing:
-        raise RuntimeError(
-            f"One or more mandatory Gerber files are missing from the {config.blendcfg['SETTINGS']['GERBER_DIR']}/ directory."
-        )
+        raise RuntimeError(f"One or more mandatory Gerber files are missing from the {gbr_dir}/ directory.")
 
 
 def do_convert_gerb_to_svg() -> None:
-    """Convert required gerb files to SVG"""
-
+    """Convert required gerb files to SVG."""
     # Convert GBR to SVG, parallelly
     logger.info("Converting GBR to SVG files. ")
-    files_for_SVG = [GBR_EDGE_CUTS]
+    files_for_svg = [GBR_EDGE_CUTS]
     if os.path.exists(os.path.join(config.gbr_path, GBR_PTH + ".gbr")):
-        files_for_SVG.append(GBR_PTH)
+        files_for_svg.append(GBR_PTH)
     if os.path.exists(os.path.join(config.gbr_path, GBR_NPTH + ".gbr")):
-        files_for_SVG.append(GBR_NPTH)
+        files_for_svg.append(GBR_NPTH)
     with Pool() as p:
-        p.map(partial(gbr_to_svg_convert), files_for_SVG)
+        p.map(partial(gbr_to_svg_convert), files_for_svg)
 
     logger.info("Post-processing SVG files. ")
     # Get edge cuts SVG dimensions
@@ -208,7 +206,7 @@ def do_convert_gerb_to_svg() -> None:
 
 
 def do_generate_displacement_map_foundation() -> None:
-    """Generate the displacement map foundation"""
+    """Generate the displacement map foundation."""
     logger.info("Generating top and bottom displacement map foundation... ")
     map_input_list = [OUT_F_DISPMAP, OUT_B_DISPMAP]
 
@@ -217,7 +215,7 @@ def do_generate_displacement_map_foundation() -> None:
 
 
 def do_convert_layer_to_png() -> None:
-    """Convert required layer gerber files to PNGs"""
+    """Convert required layer gerber files to PNGs."""
     logger.info("Converting all layers to PNG. ")
 
     files_names_list = get_gerbers_to_convert_to_png()
@@ -237,7 +235,7 @@ def do_convert_layer_to_png() -> None:
 
 
 def do_crop_pngs() -> None:
-    """Crop generated PNGs based on trim data generated from edge cuts"""
+    """Crop generated PNGs based on trim data generated from edge cuts."""
     logger.info("Cropping all pngs. ")
 
     # Trim edge_cuts and get crop data for other layers
@@ -256,7 +254,7 @@ def do_crop_pngs() -> None:
 
 
 def do_generate_displacement_maps() -> None:
-    """Generate the displacement maps"""
+    """Generate the displacement maps."""
     logger.info("Building displacement maps.")
 
     # Prepare transparent holes pngs
@@ -287,7 +285,7 @@ def do_generate_displacement_maps() -> None:
 
 
 def get_gerbers_to_convert_to_png() -> List[str]:
-    """Get a list of .gbr files that need to be converted to PNG"""
+    """Get a list of .gbr files that need to be converted to PNG."""
     # Prepare data to convert GBR -> SVG
     files_names_list = list()  # list of gbr files to convert;
     for file in os.listdir(config.gbr_path):
@@ -305,8 +303,7 @@ def get_gerbers_to_convert_to_png() -> List[str]:
 
 
 def gbr_png_convert(data: Tuple[str, str, str, str]) -> None:
-    """Convert gerber file to png with given input name, output name, background and foreground"""
-
+    """Convert gerber file to png with given input name, output name, background and foreground."""
     gbr_file_name = data[0] + ".gbr"
     png_file_name = data[1] + ".png"
 
@@ -314,15 +311,16 @@ def gbr_png_convert(data: Tuple[str, str, str, str]) -> None:
     in_gbr_file_path = os.path.join(config.gbr_path, gbr_file_name)
     png_path = os.path.join(config.png_path, png_file_name)
 
-    bg = data[2]
-    fg = data[3]
+    bg_color = data[2]
+    fg_color = data[3]
+    fg = "--foreground"
     # All data are present in gerbv convert function to ensure the same size of all converted PNGs
     rc = os.system(
-        f"gerbv {in_gbr_file_path} --background={bg} --foreground={fg} \
-        {gbr_path}{GBR_F_MASK}.gbr --foreground={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_MASK}.gbr --foreground={HEX_BLACK_ALPHA} \
-        {gbr_path}{GBR_F_FAB}.gbr --foreground={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_FAB}.gbr --foreground={HEX_BLACK_ALPHA} \
-        {gbr_path}{GBR_F_SILK}.gbr --foreground={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_SILK}.gbr --foreground={HEX_BLACK_ALPHA} \
-        {gbr_path}{GBR_EDGE_CUTS}.gbr --foreground={HEX_BLACK_ALPHA} \
+        f"gerbv {in_gbr_file_path} --background={bg_color} {fg}={fg_color} \
+        {gbr_path}{GBR_F_MASK}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_MASK}.gbr {fg}={HEX_BLACK_ALPHA} \
+        {gbr_path}{GBR_F_FAB}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_FAB}.gbr {fg}={HEX_BLACK_ALPHA} \
+        {gbr_path}{GBR_F_SILK}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_SILK}.gbr {fg}={HEX_BLACK_ALPHA} \
+        {gbr_path}{GBR_EDGE_CUTS}.gbr {fg}={HEX_BLACK_ALPHA} \
         -o {png_path} --dpi={config.blendcfg['SETTINGS']['DPI']} -a --export=png 2>/dev/null"
     )
     if rc != 0:
@@ -330,20 +328,20 @@ def gbr_png_convert(data: Tuple[str, str, str, str]) -> None:
 
 
 def generate_displacement_map_png(filename: str) -> None:
-    """Prepare displacement map from PNGs"""
-
+    """Prepare displacement map from PNGs."""
     gbr_path = config.gbr_path
     png_path = os.path.join(config.png_path, filename + ".png")
     side = filename[0]  # first letter from png name
+    fg = "--foreground"
     rc = os.system(
-        f"gerbv {gbr_path}{GBR_PTH}.gbr --background=#555555 --foreground=#000000ff \
-        {gbr_path}{GBR_NPTH}.gbr --foreground=#000000ff \
-        {gbr_path}{side}_Mask.gbr --foreground=#404040ff \
-        {gbr_path}{side}_Cu.gbr --foreground=#888888ff \
-        {gbr_path}{GBR_F_MASK}.gbr --foreground={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_MASK}.gbr --foreground={HEX_BLACK_ALPHA} \
-        {gbr_path}{GBR_F_FAB}.gbr --foreground={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_FAB}.gbr --foreground={HEX_BLACK_ALPHA} \
-        {gbr_path}{GBR_F_SILK}.gbr --foreground={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_SILK}.gbr --foreground={HEX_BLACK_ALPHA} \
-        {gbr_path}{GBR_EDGE_CUTS}.gbr --foreground={HEX_BLACK_ALPHA} \
+        f"gerbv {gbr_path}{GBR_PTH}.gbr --background=#555555 {fg}=#000000ff \
+        {gbr_path}{GBR_NPTH}.gbr {fg}=#000000ff \
+        {gbr_path}{side}_Mask.gbr {fg}=#404040ff \
+        {gbr_path}{side}_Cu.gbr {fg}=#888888ff \
+        {gbr_path}{GBR_F_MASK}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_MASK}.gbr {fg}={HEX_BLACK_ALPHA} \
+        {gbr_path}{GBR_F_FAB}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_FAB}.gbr {fg}={HEX_BLACK_ALPHA} \
+        {gbr_path}{GBR_F_SILK}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_SILK}.gbr {fg}={HEX_BLACK_ALPHA} \
+        {gbr_path}{GBR_EDGE_CUTS}.gbr {fg}={HEX_BLACK_ALPHA} \
         -o {png_path} -a --dpi={config.blendcfg['SETTINGS']['DPI']} --export=png 2> /dev/null"
     )
     if rc != 0:
@@ -351,33 +349,32 @@ def generate_displacement_map_png(filename: str) -> None:
 
 
 def mkdir(path: str) -> None:
-    """Create a directory at the specified path
+    """Create a directory at the specified path.
 
     Wraps any errors with a nicer error exception.
     """
     try:
         os.makedirs(path, exist_ok=True)
     except OSError as e:
-        raise RuntimeError(f"Could not create folder at path {path}: {repr(e)}")
+        raise RuntimeError(f"Could not create folder at path {path}: {repr(e)}") from e
 
 
 def copy_file(path: str, new_path: str, old_file_name: str, new_file_name: str) -> None:
-    """Copy file from on path to other path with new name"""
-
+    """Copy file from on path to other path with new name."""
     if os.path.exists(path + old_file_name):
         shutil.copy(path + old_file_name, new_path + new_file_name)
         os.sync()
 
 
 def remove_files_with_ext(path: str, ext: str) -> None:
-    """Remove files with given extension from given path"""
+    """Remove files with given extension from given path."""
     file_list = [file for file in os.listdir(path) if file.endswith(ext)]
     for file in file_list:
         os.remove(path + file)
 
 
 def gbr_to_svg_convert(file_name: str) -> None:
-    """Convert gerber file to svg"""
+    """Convert gerber file to svg."""
     gbr_path = config.gbr_path
     svg_path = config.svg_path
     gbr_file_path = os.path.join(gbr_path, file_name + ".gbr")
@@ -396,7 +393,7 @@ def gbr_to_svg_convert(file_name: str) -> None:
 
 
 def correct_frame_in_svg(data: str, frame: str, frame_lines: List[str]) -> None:
-    """Correct dimension of svg file based on edge cuts layer"""
+    """Correct dimension of svg file based on edge cuts layer."""
     file_path = config.svg_path + data + ".svg"
     if not os.path.exists(file_path):
         return
@@ -413,19 +410,18 @@ def correct_frame_in_svg(data: str, frame: str, frame_lines: List[str]) -> None:
 
 
 def inkscape_path_union(file_path: str) -> None:
-    """Run Inkscape command"""
+    """Run Inkscape command."""
     if not os.path.exists(file_path):
         return
-    rc = os.system(
-        f'inkscape --actions="select-all;object-stroke-to-path;path-union;export-filename:{file_path};export-do" {file_path}'
-    )
+    inkscape_actions = "select-all;object-stroke-to-path;path-union;"
+    rc = os.system(f'inkscape --actions="{inkscape_actions}export-filename:{file_path};export-do" {file_path}')
+
     if rc != 0:
         raise RuntimeError(f"Failed to generate path union: inkscape returned exit code {rc}")
 
 
 def get_edge_trim_data() -> List[int]:
-    """Calculate trim offset for PNGs"""
-
+    """Calculate trim offset for PNGs."""
     with Image(filename=os.path.join(config.png_path, GBR_EDGE_CUTS + ".png")) as edge_cuts_png:
         edge_cuts_png.trim()
 
@@ -437,19 +433,16 @@ def get_edge_trim_data() -> List[int]:
             count_edge += 1
 
         shave_offset = int(count_edge / 2)
-        trims = [
+        return [
             edge_cuts_png.width - 2 * shave_offset,
             edge_cuts_png.height - 2 * shave_offset,
             edge_cuts_png.page_x + shave_offset,
             edge_cuts_png.page_y + shave_offset,
         ]
 
-        return trims
-
 
 def crop_png(file: str, crop_offset: List[int]) -> None:
-    """Crop PNG using calculated offset"""
-
+    """Crop PNG using calculated offset."""
     image_path = os.path.join(config.png_path, file)
 
     with Image(filename=image_path) as png:
@@ -478,10 +471,9 @@ def wand_operation(
     out_file: str = "",
     fuzz: int = 0,
     transparency: str = "",
-    blur: List[int] = [],
+    blur: None | List[int] = None,
 ) -> None:
-    """Imagemagick-like operation"""
-
+    """Imagemagick-like operation."""
     image_path = config.png_path + in_file + ".png"
     if not os.path.exists(image_path):
         return
@@ -489,7 +481,7 @@ def wand_operation(
         percent_fuzz = int(png.quantum_range * fuzz / 100)
         if transparency is not None:
             png.transparent_color(color=Color(transparency), alpha=0.0, fuzz=percent_fuzz)
-        if len(blur) >= 2:
+        if blur is not None:
             png.blur(blur[0], blur[1])
         if out_file is None:
             out_file = in_file
@@ -497,8 +489,7 @@ def wand_operation(
 
 
 def add_pngs(in1: str, in_list: List[str], out: str) -> None:
-    """Join PNGs on one another"""
-
+    """Join PNGs on one another."""
     with Image(filename=config.png_path + in1 + ".png") as png:
         png.background_color = Color("transparent")
         for file in in_list:
@@ -511,8 +502,7 @@ def add_pngs(in1: str, in_list: List[str], out: str) -> None:
 
 
 def prepare_silks(in_file: str, out_file: str) -> None:
-    """Prepare transparent silks pngs + set silks alpha"""
-
+    """Prepare transparent silks pngs + set silks alpha."""
     with Image(filename=config.png_path + in_file + ".png") as png:
         png.transparent_color(color=Color("black"), alpha=0.0)
         levelize_matrix = [

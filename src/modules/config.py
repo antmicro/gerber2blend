@@ -1,6 +1,8 @@
+"""Module for configuring input data."""
+
 import os
 from os import getcwd, path
-import modules.fileIO as fio
+import modules.file_io as fio
 import core.blendcfg
 from typing import Dict, Any, List, Tuple
 import logging
@@ -53,10 +55,12 @@ pcbscale: float = 0.0
 
 
 def init_global(arguments: argparse.Namespace) -> None:
-    """Initialize global variables used across modules
+    """Initialize global variables used across modules.
 
     Args:
+    ----
         arguments: CLI arguments
+
     """
     global prj_path
     global blendcfg
@@ -78,10 +82,12 @@ def init_global(arguments: argparse.Namespace) -> None:
 
 
 def configure_paths(arguments: argparse.Namespace) -> None:
-    """Configure global paths that will be searched for HW files
+    """Configure global paths that will be searched for HW files.
 
     Args:
+    ----
         arguments: CLI arguments
+
     """
     global fab_path
     global png_path
@@ -97,8 +103,7 @@ def configure_paths(arguments: argparse.Namespace) -> None:
     fab_path = prj_path + blendcfg["SETTINGS"]["GERBER_DIR"] + "/"
     if not os.path.isdir(fab_path):
         raise RuntimeError(
-            "There is no %s/ directory in the current working directory! (%s)"
-            % (blendcfg["SETTINGS"]["GERBER_DIR"], prj_path)
+            f"There is no {blendcfg['SETTINGS']['GERBER_DIR']}/ directory in the current working directory! ({prj_path})"
         )
 
     # Determine the name of the PCB to use as a name for the .blend
@@ -120,10 +125,12 @@ def configure_paths(arguments: argparse.Namespace) -> None:
 
 
 def configure_constants(arguments: argparse.Namespace) -> None:
-    """Configure common constants
+    """Configure common constants.
 
     Args:
+    ----
         arguments: CLI arguments
+
     """
     global pcbscale
 

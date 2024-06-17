@@ -1,3 +1,5 @@
+"""Module responsible for parsing config file."""
+
 import logging
 import os.path
 from shutil import copyfile
@@ -14,18 +16,19 @@ BLENDCFG_FILENAME = "blendcfg.yaml"
 
 
 class Field:
-    """Represents schema of a configuration field"""
+    """Represents schema of a configuration field."""
 
     def __init__(
         self,
-        type: str,
+        field_type: str,
         conv: Optional[Callable[[Any], Any]] = None,
         optional: bool = False,
     ) -> None:
-        """Create a configuration field
+        """Create a configuration field.
 
         Args:
-            type: String name of the type of the field. One of: "color",
+        ----
+            field_type: String name of the type of the field. One of: "color",
                 "background", "bool", "number", "color_preset", "transition".
             conv: Converter function to use. When set, the value of the field from
                 `blendcfg.yaml` is passed to this function. Value returned from
@@ -33,19 +36,22 @@ class Field:
             optional: Specify if the field can be omitted from the blendcfg. Optional
                 fields are set to None in the configuration if they are not
                 present.
+
         """
-        self.type = type
+        self.type = field_type
         self.conv = conv
         self.optional = optional
 
 
 def check_and_copy_blendcfg(file_path: str, g2b_path: str) -> None:
+    """Copy blendcfg to project's directory."""
     if not os.path.exists(file_path + BLENDCFG_FILENAME):
         logger.warning("Config file not found, copying default template")
         copyfile(g2b_path + "/templates/" + BLENDCFG_FILENAME, file_path + BLENDCFG_FILENAME)
 
 
 def is_color(arg: str | None) -> bool:
+    """Check if given string represents hex color."""
     hex_chars = "0123456789ABCDEF"
     if arg is None:
         return False
@@ -53,6 +59,7 @@ def is_color(arg: str | None) -> bool:
 
 
 def is_color_preset(arg: str | list[str] | None) -> bool:
+    """Check if given string represents preset color."""
     if arg is None:
         return False
     presets = ["White", "Black", "Blue", "Red", "Green"]  # allowed color keywords
@@ -65,31 +72,12 @@ def is_color_preset(arg: str | list[str] | None) -> bool:
     return False
 
 
-def is_top_bottom(arg: None | list[str]) -> bool:
-    if arg is None:
-        return False
-    first = arg[0] == "True"
-    if first and len(arg) == 1:
-        return False  # missing backgrounds to use
-    correct_bg = ["Black", "White", "SeeThrough"]
-    return all([bg in correct_bg for bg in arg[1:]])
-
-
-def is_transition(arg: None | list[str]) -> bool:
-    if arg is None:
-        return False
-    first = arg[0] == "True"
-    if first and len(arg) == 1:
-        return False  # missing backgrounds to use
-    options = ["All", "Renders"]
-    return all([opt in options for opt in arg[1:]])
-
-
 # parse color
-def hex_to_rgba(hex: str, alpha: bool = True) -> tuple[float, ...]:
+def hex_to_rgba(hex_number: str, alpha: bool = True) -> tuple[float, ...]:
+    """Convert hex number to RGBA."""
     rgb = []
     for i in (0, 2, 4):
-        decimal = int(hex[i : i + 2], 16)
+        decimal = int(hex_number[i : i + 2], 16)
         rgb.append(decimal / 255)
     if alpha:
         rgb.append(1)
@@ -97,8 +85,8 @@ def hex_to_rgba(hex: str, alpha: bool = True) -> tuple[float, ...]:
 
 
 def parse_strings(arg: str) -> list[str]:
-    tmp = arg.replace(",", "").split()
-    return tmp
+    """Parse string and split into separate values by comma separator."""
+    return arg.replace(",", "").split()
 
 
 # Schema for blendcfg.yaml file
@@ -133,14 +121,16 @@ CONFIGURATION_SCHEMA = {
 
 
 def check_throw_error(cfg: Dict[str, Any], args: list[str], schema: Field) -> None:
-    """Validate the given configuration entry
+    """Validate the given configuration entry.
 
     Args:
+    ----
         cfg: entire deserialized blendcfg.yaml file
         args: a list of names leading to the configuration entry that
               needs to be checked, for example: ["SETTINGS", "DPI"].
               Currently, there must be exactly two names present in the list!
         schema: schema for the field
+
     """
     missing_config = False
     val = None
@@ -180,7 +170,7 @@ def check_throw_error(cfg: Dict[str, Any], args: list[str], schema: Field) -> No
                 val,
                 str(e),
             )
-            raise RuntimeError("Configuration invalid")
+            raise RuntimeError("Configuration invalid") from e
 
     not_schema_type_err = f"[{args[0]}][{args[1]}] is not a {schema.type}"
     color_type_err = f"[{args[0]}][{args[1]}] is not a color, should be hex color value"
@@ -188,16 +178,12 @@ def check_throw_error(cfg: Dict[str, Any], args: list[str], schema: Field) -> No
     match schema.type:
         case "color":
             assert is_color(val), color_type_err
-        case "background":
-            assert is_top_bottom(val), not_schema_type_err
         case "bool":
             assert isinstance(val, bool), not_schema_type_err
         case "number":
             assert isinstance(val, float) or isinstance(val, int), not_schema_type_err
         case "color_preset":
             assert is_color_preset(val), color_type_err + " or presets"
-        case "transition":
-            assert is_transition(val), not_schema_type_err
         case "tuple":
             assert isinstance(val, tuple), not_schema_type_err
         case "string":
@@ -207,11 +193,13 @@ def check_throw_error(cfg: Dict[str, Any], args: list[str], schema: Field) -> No
 
 
 def validate_module_config(schema: dict[str, Field], conf: dict[str, Any], module_name: str) -> bool:
-    """Validates the module config against a given schema
+    """Validate the module config against a given schema.
 
-    Returns:
+    Returns
+    -------
         True: module configuration is valid
         False: module configuration is invalid
+
     """
     valid = True
 
@@ -226,7 +214,7 @@ def validate_module_config(schema: dict[str, Field], conf: dict[str, Any], modul
 
 
 def validate_setting_dependencies(cfg: Any) -> None:
-    """Validate if certain blendcfg.yaml settings have their required dependencies"""
+    """Validate if certain blendcfg.yaml settings have their required dependencies."""
     _ = cfg
     pass
     # Left empty on purpose
@@ -236,8 +224,7 @@ def validate_setting_dependencies(cfg: Any) -> None:
 
 
 def check_and_parse_blendcfg(cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """Validate and parse the blendcfg.yaml loaded from a file"""
-
+    """Validate and parse the blendcfg.yaml loaded from a file."""
     valid = True
 
     for module in cfg:
@@ -257,7 +244,7 @@ def check_and_parse_blendcfg(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def open_blendcfg(path: str, config_preset: str) -> Dict[str, Any]:
-    """Open configuration file from the specified path"""
+    """Open configuration file from the specified path."""
     with open(path + BLENDCFG_FILENAME, "r") as bcfg:
         cfg = yaml.safe_load(bcfg)
         if config_preset not in cfg:
