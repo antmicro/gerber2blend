@@ -1,3 +1,5 @@
+"""Module containing custom utilities functions."""
+
 import bpy
 import bmesh
 from mathutils import Vector, kdtree
@@ -8,16 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 def get_vertices(mesh: bpy.types.Mesh, precision: int = 0) -> List[Tuple[Any, ...]]:
-    """Return list of object's vertices with float precision =-1"""
-
+    """Return list of object's vertices with float precision =-1."""
     verts = [vert.co for vert in mesh.vertices]
-    plain_verts = [Vector(vert).to_tuple(precision) for vert in verts]  # type: ignore [no-untyped-call]
-    return plain_verts
+    return [Vector(vert).to_tuple(precision) for vert in verts]  # type: ignore [no-untyped-call]
 
 
 def make_kd_tree(verts: List[Tuple[float]]) -> kdtree.KDTree:
-    """Return K-D tree of model vertices"""
-
+    """Return K-D tree of model vertices."""
     main_list = list(verts)
     kd = kdtree.KDTree(len(main_list))  # type: ignore
     for i, v in enumerate(main_list):
@@ -27,8 +26,7 @@ def make_kd_tree(verts: List[Tuple[float]]) -> kdtree.KDTree:
 
 
 def get_verts_difference(main_set: List[Tuple[float]], remove_set: List[Tuple[float]]) -> List[Tuple[float]]:
-    """Remove set of vertices from another set"""
-
+    """Remove set of vertices from another set."""
     main_list = list(main_set)
     kd = make_kd_tree(main_list)
     indexes_to_remove = []
@@ -37,14 +35,13 @@ def get_verts_difference(main_set: List[Tuple[float]], remove_set: List[Tuple[fl
         if dist < 0.0001:  # points in the same place
             indexes_to_remove.append(index)
 
-    for id in sorted(indexes_to_remove, reverse=True):
-        main_list.pop(id)
+    for index in sorted(indexes_to_remove, reverse=True):
+        main_list.pop(index)
     return main_list
 
 
 def verts_in(kd: kdtree.KDTree, add_set: List[Vector]) -> bool:
-    """Check if there are common vertices for two sets (using previously created kdtree)"""
-
+    """Check if there are common vertices for two sets (using previously created kdtree)."""
     for vert in add_set:
         *_, dist = kd.find(vert)
         if dist:
@@ -54,13 +51,18 @@ def verts_in(kd: kdtree.KDTree, add_set: List[Vector]) -> bool:
 
 
 def get_bbox(obj: bpy.types.Object, arg: str) -> list[Any | Vector]:
-    """Gets bbox of an object
-    Arguments:
-    'centre' - finds current center point of the model
-    '2d' - finds 2D bounding box of projection
-    '3d' - finds 3D bounding box
-    """
+    """Get bbox of an object.
 
+    Args:
+    ----
+    obj:
+        object which bounding box must be found
+    arg:
+        'centre' - finds current center point of the model
+        '2d' - finds 2D bounding box of projection
+        '3d' - finds 3D bounding box
+
+    """
     bpy.ops.object.select_all(action="DESELECT")
     bpy.context.view_layer.objects.active = obj
     bbox_vert = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]  # type:ignore
@@ -68,17 +70,16 @@ def get_bbox(obj: bpy.types.Object, arg: str) -> list[Any | Vector]:
         centre = sum(bbox_vert, Vector())  # type:ignore
         centre /= 8
         return [centre]
-    elif arg == "2d":
+    if arg == "2d":
         corner2d = [corner.to_2d() for corner in bbox_vert]
         return corner2d[::2]
-    elif arg == "3d":
+    if arg == "3d":
         return bbox_vert
     raise RuntimeError("Incorrect bbox input argument")
 
 
 def recalc_normals(obj: bpy.types.Object) -> None:
-    """Recalculate normals in object"""
-
+    """Recalculate normals in object."""
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
     bpy.ops.object.mode_set(mode="EDIT")
@@ -88,9 +89,10 @@ def recalc_normals(obj: bpy.types.Object) -> None:
     bpy.ops.object.select_all(action="DESELECT")
 
 
-def face_sel(obj: bpy.types.Object, pos: str, edge_verts: List[Tuple[float]] = []) -> None:
-    """Select faces facing specified direction (top, bottom, edge)"""
-
+def face_sel(obj: bpy.types.Object, pos: str, edge_verts: None | List[Tuple[float]] = None) -> None:
+    """Select faces facing specified direction (top, bottom, edge)."""
+    if edge_verts is None:
+        edge_verts = []
     bpy.context.view_layer.objects.active = obj
     assert isinstance(obj.data, bpy.types.Mesh)
     mesh = obj.data
@@ -118,51 +120,47 @@ def face_sel(obj: bpy.types.Object, pos: str, edge_verts: List[Tuple[float]] = [
     bmesh.update_edit_mesh(mesh)
 
 
-def face_desel(mesh: bpy.types.Mesh) -> None:
-    """Deselect all faces"""
-
+def face_desel(obj: bpy.types.Object) -> None:
+    """Deselect all faces."""
+    mesh = obj.data
     bpy.ops.object.mode_set(mode="EDIT")
-    bm = bmesh.from_edit_mesh(mesh)
+    bm = bmesh.from_edit_mesh(mesh)  # type: ignore
     bm.faces.ensure_lookup_table()  # type: ignore
-    for face in mesh.polygons:
+    for face in obj.data.polygons:  # type: ignore
         bm.faces[face.index].select = False
 
 
 def create_collection(name: str) -> Any:
-    """Create and link objects to collection"""
-
+    """Create and link objects to collection."""
     if not bpy.data.collections.get(name):
-        newCol = bpy.data.collections.new(name)
-        bpy.context.scene.collection.children.link(newCol)
+        new_col = bpy.data.collections.new(name)
+        bpy.context.scene.collection.children.link(new_col)
     return bpy.data.collections.get(name)
 
 
 def remove_collection(name: str) -> None:
-    """Remove collection"""
-
-    remCol = bpy.context.scene.collection.children.get(name)
-    if remCol is not None:
-        bpy.data.collections.remove(remCol)
+    """Remove collection."""
+    rem_col = bpy.context.scene.collection.children.get(name)
+    if rem_col is not None:
+        bpy.data.collections.remove(rem_col)
 
 
 def link_obj_to_collection(obj: bpy.types.Object, target_coll: bpy.types.Collection) -> None:
-    """Loop through all collections the obj is linked to and unlink it from there, then link to targed collection"""
+    """Loop through all collections the obj is linked to and unlink it from there, then link to targed collection."""
     for coll in obj.users_collection:  # type: ignore
         coll.objects.unlink(obj)
     target_coll.objects.link(obj)
 
 
 def apply_all_transform_obj(obj: bpy.types.Object) -> None:
-    """Apply all object transfromations"""
-
+    """Apply all object transfromations."""
     obj.select_set(True)
     bpy.ops.object.transform_apply()
     obj.select_set(False)
 
 
 def save_pcb_blend(path: str, apply_transforms: bool = False) -> None:
-    """Save blendfile"""
-
+    """Save blendfile."""
     bpy.ops.file.pack_all()
     if apply_transforms:
         for obj in bpy.context.scene.objects:

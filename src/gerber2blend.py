@@ -1,3 +1,5 @@
+"""Script's main execution file."""
+
 import argparse
 from os import path
 import os
@@ -16,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments passed to gerber2blend."""
+
     def formatter(prog: str) -> argparse.HelpFormatter:
         return argparse.HelpFormatter(prog, max_help_position=35)
 
@@ -23,7 +27,7 @@ def parse_args() -> argparse.Namespace:
         prog="gerber2blend",
         prefix_chars="-",
         formatter_class=formatter,
-        description="Gerber to Blender pipeline runner for generating PCB 3D models and renders from PCB production files",
+        description="Gerber to Blender pipeline runner for generating PCB 3D models from PCB production files",
     )
     parser.add_argument(
         "-d",
@@ -61,7 +65,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def import_python_submodules() -> None:
-    """Import all available extension Python submodules from the environment"""
+    """Import all available extension Python submodules from the environment."""
     # Look in the `modules` directory under site-packages
     modules_path = os.path.join(os.path.dirname(__file__), "modules")
     for _, module_name, _ in pkgutil.walk_packages([modules_path], prefix="modules."):
@@ -74,7 +78,7 @@ def import_python_submodules() -> None:
 
 
 def find_module(name: str) -> Optional[type]:
-    """Find a class that matches the given module name
+    """Find a class that matches the given module name.
 
     This matches a config module name, for example BOARD, to a Python
     class defined somewhere within the available Python environment.
@@ -94,7 +98,7 @@ def find_module(name: str) -> Optional[type]:
 
 
 def create_modules(config: list[dict[Any, Any]]) -> list[core.module.Module]:
-    """Creates modules based on the blendcfg.yaml configuration file."""
+    """Create modules based on the blendcfg.yaml configuration file."""
     import_python_submodules()
 
     runnable_modules = []
@@ -118,13 +122,13 @@ def create_modules(config: list[dict[Any, Any]]) -> list[core.module.Module]:
             module = class_type()
             runnable_modules.append(module)
         except Exception as e:
-            raise RuntimeError(f"Failed to create module {name}: {str(e)}")
+            raise RuntimeError(f"Failed to create module {name}: {str(e)}") from e
 
     return runnable_modules
 
 
 def run_modules_for_config(conf: dict[Any, Any]) -> None:
-    """Run all module processing jobs for the specified blendcfg.yml"""
+    """Run all module processing jobs for the specified blendcfg.yml."""
     modules = create_modules(conf["STAGES"])
 
     logger.info("Number of modules to run: %d", len(modules))
@@ -135,6 +139,7 @@ def run_modules_for_config(conf: dict[Any, Any]) -> None:
 
 
 def main() -> None:
+    """Execute script's main function."""
     args = parse_args()
 
     if args.blend_path and not path.isfile(args.blend_path):

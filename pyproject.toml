@@ -32,3 +32,12 @@ disallow_incomplete_defs = true
 check_untyped_defs = true
 disallow_untyped_decorators = true
 no_implicit_optional = true
+
+[tool.ruff]
+select = ["E", "F", "N", "B", "D", "A", "RET"]
+line-length = 120
+target-version = "py311"
+exclude = [
+	"documentation",
+	"__init__.py",
+]

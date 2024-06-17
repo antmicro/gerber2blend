@@ -1,7 +1,11 @@
+"""Module responsible for defining logger."""
+
 import logging
 
 
 class CustomFormatter(logging.Formatter):
+    """Class defining custom logger formatter."""
+
     # use ansi escape styles
     # https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797#colors--graphics-mode
     grey = "\x1b[38;21m"
@@ -20,6 +24,7 @@ class CustomFormatter(logging.Formatter):
     }
 
     def format(self, record: logging.LogRecord) -> str:
+        """Define custom logger format."""
         datefmt = "%H:%M:%S"  # "%d.%m.%Y %H:%M:%S"
         log_fmt = self.FORMATS.get(record.levelno)
         formatter = logging.Formatter(log_fmt, datefmt)
@@ -27,9 +32,7 @@ class CustomFormatter(logging.Formatter):
 
 
 def set_logging(use_debug: bool) -> None:
-    """Configure loggers to use a custom formatter for highlighting
-    the log level.
-    """
+    """Configure loggers to use a custom formatter for highlighting the log level."""
     root = logging.getLogger()
     level = logging.DEBUG if use_debug else logging.INFO
     root.setLevel(level)

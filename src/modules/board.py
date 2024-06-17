@@ -1,3 +1,5 @@
+"""Module generating 3D model of PCB based on supplied SVGs and PNGs."""
+
 import bpy
 import bmesh
 import core.module
@@ -27,9 +29,10 @@ logger = logging.getLogger(__name__)
 
 
 class Board(core.module.Module):
-    """Board processing module"""
+    """Board processing module."""
 
     def execute(self) -> None:
+        """Execute Board module."""
         if path.isfile(config.pcb_blend_path) and not config.args.regenerate:
             logger.info(
                 f"Board model already exists at {config.pcb_blend_path}. "
@@ -46,12 +49,11 @@ class Board(core.module.Module):
 
 
 def make_board() -> bpy.types.Object:
-    """Main board mesh generation function"""
-
+    """Generate main board mesh."""
     logger.info("Generating board")
 
-    In_list, layer_thickness = generate_inner_layer_list()
-    logging.debug(f"Found layer list: {In_list}")
+    in_list, layer_thickness = generate_inner_layer_list()
+    logging.debug(f"Found layer list: {in_list}")
     logging.debug(f"Thickness of layers: {layer_thickness}")
     board_col = cu.create_collection("Board")
 
@@ -143,14 +145,14 @@ def make_board() -> bpy.types.Object:
     extrude_mesh(pcb, layer_thickness[0])
     cu.recalc_normals(pcb)
 
-    map_PCB_to_UV(pcb)
+    map_pcb_to_uv(pcb)
 
     # add materials to board edges
     process_edge_materials(pcb, plated_pcb_verts, bare_pcb_verts)  # type: ignore
 
     if config.blendcfg["EFFECTS"]["STACKUP"]:
-        logger.info("Creating layers (" + str(len(In_list)) + ")")
-        for i in range(len(In_list)):
+        logger.info("Creating layers (" + str(len(in_list)) + ")")
+        for i in range(len(in_list)):
             pcb.select_set(True)
             # now original is selected
             bpy.ops.object.duplicate()
@@ -162,7 +164,7 @@ def make_board() -> bpy.types.Object:
             new_obj.location += Vector((0, 0, sum(layer_thickness[0 : i + 1])))  # type: ignore
             bpy.ops.object.select_all(action="DESELECT")
 
-    process_materials(board_col, In_list)
+    process_materials(board_col, in_list)
 
     # update layer thickness, done after process_materials
     # to keep set(pcb_verts).intersection(outline_verts) working
@@ -225,19 +227,19 @@ def make_board() -> bpy.types.Object:
 
 
 def generate_inner_layer_list() -> Tuple[List[str], List[float]]:
-    """Generate a list of inner layer PNGs that need to be included in the model
+    """Generate a list of inner layer PNGs that need to be included in the model.
 
     Additionally, returns the thickness of each layer.
     """
-    In_list: List[str] = []
+    in_list: List[str] = []
     all_layer_thickness = [stk.get().thickness]
 
     # When stackup generation is disabled, don't need to do anything else
     if not config.blendcfg["EFFECTS"]["STACKUP"]:
-        return In_list, all_layer_thickness
+        return in_list, all_layer_thickness
 
     # Collect all inner layer PNG files from the fabrication data folder
-    In_list = sorted(
+    in_list = sorted(
         list(
             filter(
                 lambda f: f.startswith(GBR_IN) and f.endswith(".png"),
@@ -247,26 +249,26 @@ def generate_inner_layer_list() -> Tuple[List[str], List[float]]:
         key=lambda x: int(x[len(GBR_IN) :].replace(".png", "")),
         reverse=True,
     )
-    if len(In_list) == 0:
+    if len(in_list) == 0:
         logger.warning(
             f"Could not find any converted inner layer PNGs in {config.png_path}!\n"
             f"Verify if the inner layer gerbers are present and specified "
             f"with GERBER_FILENAMES in the blendcfg.yaml file."
         )
     # Sandwich the inner layers between Back and Front Cu
-    All_list = [f"{GBR_B_CU}.png"] + In_list + [f"{GBR_F_CU}.png"]
+    all_list = [f"{GBR_B_CU}.png"] + in_list + [f"{GBR_F_CU}.png"]
     stk_data = stk.get().stackup_data
     if not stk_data:
         # When no stackup data is provided, divide the configured PCB thickness evenly
-        all_layer_thickness = [stk.get().thickness / (len(All_list) + 1) for _ in range(len(All_list) + 1)]
+        all_layer_thickness = [stk.get().thickness / (len(all_list) + 1) for _ in range(len(all_list) + 1)]
     else:
         # Find the thickness of "dielectric <N>" entries in the stackup and sort
         # based on their names. This is used as the thickness of the inner layers.
         stk_in_list = [pair[0] for pair in stk_data if GBR_IN in pair[0]]
-        if len(In_list) != len(stk_in_list):
+        if len(in_list) != len(stk_in_list):
             raise RuntimeError(
                 f"Stackup layer mismatch between exported gerber files and stackup.json\n"
-                f"Found {len(In_list)} gerber file(s), found {len(stk_in_list)} layer(s) defined in JSON. Aborting!"
+                f"Found {len(in_list)} gerber file(s), found {len(stk_in_list)} layer(s) defined in JSON. Aborting!"
             )
         in_layer_thickness = [
             pair[1]
@@ -282,27 +284,25 @@ def generate_inner_layer_list() -> Tuple[List[str], List[float]]:
             + [pair[1] for pair in stk_data if "F.Mask" in pair[0]]
         )
 
-    return All_list, all_layer_thickness
+    return all_list, all_layer_thickness
 
 
 ########################################
 # board UV mapping
 
 
-def getArea_byType(Type: str) -> Optional[bpy.types.Area]:
-    """Get area for context override"""
-
+def get_area_by_type(area_type: str) -> Optional[bpy.types.Area]:
+    """Get area for context override."""
     for screen in bpy.context.workspace.screens:
         for area in screen.areas:
-            if area.type == Type:
+            if area.type == area_type:
                 return area
     return None
 
 
-def map_PCB_to_UV(pcb: bpy.types.Object) -> None:
-    """PCB surfaces UV mapping function"""
-
-    area3d = getArea_byType("VIEW_3D")
+def map_pcb_to_uv(pcb: bpy.types.Object) -> None:
+    """PCB surfaces UV mapping function."""
+    area3d = get_area_by_type("VIEW_3D")
     if area3d is None:
         return
     for ns3d in area3d.spaces:
@@ -316,7 +316,7 @@ def map_PCB_to_UV(pcb: bpy.types.Object) -> None:
     override = {
         "window": win,
         "screen": scr,
-        "area": getArea_byType("VIEW_3D"),
+        "area": get_area_by_type("VIEW_3D"),
         "region": region[0],
         "scene": bpy.context.scene,
         "space": ns3d,
@@ -351,17 +351,16 @@ def map_PCB_to_UV(pcb: bpy.types.Object) -> None:
 
 
 def boolean_diff(obj: bpy.types.Object, tool: bpy.types.Object) -> None:
-    """Apply boolean diff modifier on object and remove the tool and artifacts afterwards"""
-
+    """Apply boolean diff modifier on object and remove the tool and artifacts afterwards."""
     # define boolean operation
-    bool = obj.modifiers.new(name="diff", type="BOOLEAN")
-    assert isinstance(bool, bpy.types.BooleanModifier)
-    bool.operation = "DIFFERENCE"
+    bool_modifier = obj.modifiers.new(name="diff", type="BOOLEAN")
+    assert isinstance(bool_modifier, bpy.types.BooleanModifier)
+    bool_modifier.operation = "DIFFERENCE"
     # set tool objects
-    bool.object = tool
+    bool_modifier.object = tool
     # apply the modifier
     bpy.context.view_layer.objects.active = obj
-    bpy.ops.object.modifier_apply(modifier=bool.name)
+    bpy.ops.object.modifier_apply(modifier=bool_modifier.name)
     # delete tool object
     bpy.data.objects[tool.name].select_set(True)
     bpy.ops.object.delete()
@@ -370,8 +369,7 @@ def boolean_diff(obj: bpy.types.Object, tool: bpy.types.Object) -> None:
 
 
 def clean_outline(mesh: bpy.types.Object) -> None:
-    """Import outline from edgecuts"""
-
+    """Import outline from edgecuts."""
     bpy.context.view_layer.objects.active = mesh
     mesh.select_set(True)
     bpy.ops.object.mode_set(mode="EDIT")
@@ -383,8 +381,7 @@ def clean_outline(mesh: bpy.types.Object) -> None:
 
 
 def extrude_mesh(obj: bpy.types.Object, height: float) -> None:
-    """Extrude flat mesh using specified height"""
-
+    """Extrude flat mesh using specified height."""
     if height > 0.0:
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
@@ -396,8 +393,7 @@ def extrude_mesh(obj: bpy.types.Object, height: float) -> None:
 
 
 def import_svg(name: str, filepth: str) -> Optional[bpy.types.Object]:
-    """Import curve from SVG vector file"""
-
+    """Import curve from SVG vector file."""
     if not path.exists(filepth):
         return None
     return_obj = None
@@ -418,8 +414,7 @@ def import_svg(name: str, filepth: str) -> Optional[bpy.types.Object]:
 
 
 def prepare_mesh(name: str, svg_path: str, clean: bool, height: float, scale: float) -> Optional[bpy.types.Object]:
-    """Prepare mesh from imported curve"""
-
+    """Prepare mesh from imported curve."""
     bpy.ops.object.select_all(action="DESELECT")
     obj: bpy.types.Object | None = import_svg(name, svg_path)
     if obj is not None:
@@ -446,8 +441,7 @@ def prepare_mesh(name: str, svg_path: str, clean: bool, height: float, scale: fl
 
 
 def clean_bool_diff_artifacts(pcb: bpy.types.Object) -> None:
-    """Remove vertices that are not on Z=0 (those vertices are created by corrupted boolean diff operation)"""
-
+    """Remove vertices that are not on Z=0 (those vertices are created by corrupted boolean diff operation)."""
     bpy.ops.object.mode_set(mode="EDIT")
     assert isinstance(pcb.data, bpy.types.Mesh)
     mesh_obj = bmesh.from_edit_mesh(pcb.data)
