@@ -2,6 +2,7 @@
 
 import bpy
 import bmesh
+import math
 from mathutils import Vector, kdtree
 import logging
 from typing import List, Tuple, Any
@@ -85,6 +86,26 @@ def recalc_normals(obj: bpy.types.Object) -> None:
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.mesh.normals_make_consistent(inside=False)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    bpy.ops.object.select_all(action="DESELECT")
+
+
+def make_sharp_edges(obj: bpy.types.Object) -> None:
+    """Set edges on PCB as 'sharp edges' to properly visualize shaders.
+
+    Will work only for edges connecting exactly two faces and angle between those faces in [85,95]deg range
+    """
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="DESELECT")
+    bm = bmesh.from_edit_mesh(obj.data)  # type: ignore
+    for edge in bm.edges:
+        if len(edge.link_faces) == 2:
+            face_angle_deg = math.degrees(edge.calc_face_angle())
+            if abs(90 - face_angle_deg) < 5:
+                edge.select_set(True)
+    bpy.ops.mesh.mark_sharp()
     bpy.ops.object.mode_set(mode="OBJECT")
     bpy.ops.object.select_all(action="DESELECT")
 
