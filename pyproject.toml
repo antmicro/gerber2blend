@@ -1,26 +1,37 @@
 [tool.poetry]
 name = "gerber2blend"
-version = "1.0.0"
+version = "2.0.0"
 description = "Gerber to Blender pipeline processor"
 authors = ["Antmicro <contact@antmicro.com>"]
 license = "Apache-2.0"
 readme = "README.md"
 packages = [
     { include = "**/*.py", from = "src/" },
+    { include = "**/PCB_materials.blend", from = "src/" },
+    { include = "**/blendcfg.yaml", from = "src/" },
 ]
-include = [
-    { path = "templates", format = ["wheel", "sdist"] },
-]
+
+[tool.poetry.scripts]
+gerber2blend = "gerber2blend.gerber2blend:main"
 
 [tool.poetry.dependencies]
-python = "^3.10,<3.13"
+python = "3.11.*"
 pyyaml = "^6.0.1"
 wand = "^0.6.13"
-
+bpy = "4.1"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+select = ["E", "F", "N", "B", "D", "A", "RET"]
+line-length = 120
+target-version = "py311"
+exclude = [
+	"documentation",
+	"__init__.py",
+]
 
 [tool.black]
 line-length = 120
@@ -32,12 +43,3 @@ disallow_incomplete_defs = true
 check_untyped_defs = true
 disallow_untyped_decorators = true
 no_implicit_optional = true
-
-[tool.ruff]
-select = ["E", "F", "N", "B", "D", "A", "RET"]
-line-length = 120
-target-version = "py311"
-exclude = [
-	"documentation",
-	"__init__.py",
-]

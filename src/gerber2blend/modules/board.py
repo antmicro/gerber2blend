@@ -1,13 +1,19 @@
 """Module generating 3D model of PCB based on supplied SVGs and PNGs."""
 
-import bpy
 import bmesh
-import core.module
-from typing import List, Tuple
-import modules.config as config
-import modules.stackup as stk
-import modules.custom_utilities as cu
-from modules.config import (
+import bpy
+import logging
+
+from mathutils import Vector
+from os import listdir, path
+from typing import List, Tuple, Optional, cast, Iterable
+
+import gerber2blend.core.module
+import gerber2blend.modules.config as config
+import gerber2blend.modules.custom_utilities as cu
+import gerber2blend.modules.stackup as stk
+
+from gerber2blend.modules.config import (
     GBR_IN,
     GBR_PTH,
     GBR_NPTH,
@@ -15,20 +21,17 @@ from modules.config import (
     GBR_F_CU,
     GBR_B_CU,
 )
-from os import listdir, path
-from mathutils import Vector
-from modules.materials import (
+from gerber2blend.modules.materials import (
     process_materials,
     process_edge_materials,
     clear_empty_material_slots,
 )
-import logging
-from typing import Optional, cast, Iterable
+
 
 logger = logging.getLogger(__name__)
 
 
-class Board(core.module.Module):
+class Board(gerber2blend.core.module.Module):
     """Board processing module."""
 
     def execute(self) -> None:
@@ -301,33 +304,10 @@ def get_area_by_type(area_type: str) -> Optional[bpy.types.Area]:
 
 
 def map_pcb_to_uv(pcb: bpy.types.Object) -> None:
-    """PCB surfaces UV mapping function."""
-    area3d = get_area_by_type("VIEW_3D")
-    if area3d is None:
-        return
-    for ns3d in area3d.spaces:
-        if ns3d.type == "VIEW_3D":
-            break
-    assert isinstance(ns3d, bpy.types.SpaceView3D)
-    win = bpy.context.window
-    scr = win.screen
-    region = [region for region in area3d.regions if region.type == "WINDOW"]
-
-    override = {
-        "window": win,
-        "screen": scr,
-        "area": get_area_by_type("VIEW_3D"),
-        "region": region[0],
-        "scene": bpy.context.scene,
-        "space": ns3d,
-    }
-
-    if ns3d.region_3d.view_perspective == "PERSP":
-        bpy.ops.view3d.view_persportho(override)
+    """PCB surfaces UV mapping function"""
 
     cu.face_sel(pcb, "top")
     bpy.ops.uv.cube_project(
-        override,
         cube_size=1.0,
         correct_aspect=True,
         clip_to_bounds=True,
@@ -336,14 +316,12 @@ def map_pcb_to_uv(pcb: bpy.types.Object) -> None:
 
     cu.face_sel(pcb, "bot")
     bpy.ops.uv.cube_project(
-        override,
         cube_size=1.0,
         correct_aspect=True,
         clip_to_bounds=True,
         scale_to_bounds=True,
     )
     bpy.ops.object.mode_set(mode="OBJECT")
-    bpy.ops.view3d.view_persportho(override)
 
 
 ########################################

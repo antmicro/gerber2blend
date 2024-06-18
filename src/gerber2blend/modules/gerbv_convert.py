@@ -9,11 +9,11 @@ from multiprocessing import Pool
 from typing import List, Tuple
 from wand.image import Image  # type: ignore
 from wand.color import Color  # type: ignore
-import core.module
-import core.blendcfg
-import modules.config as config
-import modules.file_io as fio
-from modules.config import (
+import gerber2blend.core.module
+import gerber2blend.core.blendcfg
+import gerber2blend.modules.config as config
+import gerber2blend.modules.file_io as fio
+from gerber2blend.modules.config import (
     GBR_IN,
     GBR_PTH,
     GBR_NPTH,
@@ -47,7 +47,7 @@ TMP_ALPHAB_B_MASK = "alphab-B_Mask"
 logger = logging.getLogger(__name__)
 
 
-class GerbConvert(core.module.Module):
+class GerbConvert(gerber2blend.core.module.Module):
     """Module to convert gerbers to the required intermediate files."""
 
     def execute(self) -> None:
@@ -121,7 +121,7 @@ def do_prepare_build_directory() -> None:
         fpath = os.path.join(config.fab_path, v)
         matches = glob.glob(fpath)
         if len(matches) == 0:
-            if core.blendcfg.CONFIGURATION_SCHEMA["GERBER_FILENAMES"][k].optional:
+            if gerber2blend.core.blendcfg.CONFIGURATION_SCHEMA["GERBER_FILENAMES"][k].optional:
                 logger.warning(f"Did not find optional {k} in path: {config.fab_path}")
             else:
                 logger.error(

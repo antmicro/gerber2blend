@@ -1,18 +1,18 @@
-"""Script's main execution file."""
+"""Scripts main execution file."""
 
 import argparse
-from os import path
+import importlib
+import inspect
+import logging
 import os
 import pkgutil
 import sys
-import logging
-import inspect
-import importlib
-from typing import Optional, Any
-import core.log
-import core.module
-import core.blendcfg
-import modules.config as config
+from os import path
+from typing import Any, Optional
+import gerber2blend.core.blendcfg
+import gerber2blend.core.log
+import gerber2blend.core.module
+import gerber2blend.modules.config as config
 
 logger = logging.getLogger(__name__)
 
@@ -60,15 +60,14 @@ def parse_args() -> argparse.Namespace:
         default="default",
     )
 
-    arguments = sys.argv[sys.argv.index("--") + 1 :]  # omit blender arguments
-    return parser.parse_args(args=arguments)
+    return parser.parse_args()
 
 
 def import_python_submodules() -> None:
     """Import all available extension Python submodules from the environment."""
     # Look in the `modules` directory under site-packages
     modules_path = os.path.join(os.path.dirname(__file__), "modules")
-    for _, module_name, _ in pkgutil.walk_packages([modules_path], prefix="modules."):
+    for _, module_name, _ in pkgutil.walk_packages([modules_path], prefix="gerber2blend.modules."):
         logger.debug("Importing Python submodule: %s", module_name)
         try:
             importlib.import_module(module_name)
@@ -84,20 +83,24 @@ def find_module(name: str) -> Optional[type]:
     class defined somewhere within the available Python environment.
     The class must derive from `Module` available in core/module.py.
     """
-    for _, obj in inspect.getmembers(sys.modules["modules"]):
+    for _, obj in inspect.getmembers(sys.modules["gerber2blend.modules"]):
         if not inspect.ismodule(obj):
             continue
 
         for subname, subobj in inspect.getmembers(obj):
             uppercase_name = subname.upper()
-            if inspect.isclass(subobj) and issubclass(subobj, core.module.Module) and name == uppercase_name:
+            if (
+                inspect.isclass(subobj)
+                and issubclass(subobj, gerber2blend.core.module.Module)
+                and name == uppercase_name
+            ):
                 logger.debug("Found module: %s in %s", subname, obj)
                 return subobj
 
     return None
 
 
-def create_modules(config: list[dict[Any, Any]]) -> list[core.module.Module]:
+def create_modules(config: list[dict[Any, Any]]) -> list[gerber2blend.core.module.Module]:
     """Create modules based on the blendcfg.yaml configuration file."""
     import_python_submodules()
 
@@ -113,7 +116,7 @@ def create_modules(config: list[dict[Any, Any]]) -> list[core.module.Module]:
         if not class_type:
             raise RuntimeError(
                 f"Could not find module {name} anywhere! "
-                "Have you defined a class for the module, and is it a subclass of core.module.Module?"
+                "Have you defined a class for the module, and is it a subclass of gerber2blend.core.module.Module?"
             )
 
         # We got a type, we can now create the object
@@ -128,7 +131,7 @@ def create_modules(config: list[dict[Any, Any]]) -> list[core.module.Module]:
 
 
 def run_modules_for_config(conf: dict[Any, Any]) -> None:
-    """Run all module processing jobs for the specified blendcfg.yml."""
+    """Run all module processing jobs for the specified blendcfg.yaml."""
     modules = create_modules(conf["STAGES"])
 
     logger.info("Number of modules to run: %d", len(modules))
@@ -147,7 +150,7 @@ def main() -> None:
         exit(1)
 
     # Configure logger based on if we're debugging or not
-    core.log.set_logging(args.debug)
+    gerber2blend.core.log.set_logging(args.debug)
     try:
         config.init_global(args)
         run_modules_for_config(config.blendcfg)

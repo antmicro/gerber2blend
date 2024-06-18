@@ -3,7 +3,7 @@
 import bpy
 from os import listdir
 import logging
-import modules.config as config
+import gerber2blend.modules.config as config
 from pathlib import Path
 from typing import Optional, List, Callable
 

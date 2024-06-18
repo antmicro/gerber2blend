@@ -2,7 +2,7 @@
 
 import json
 from typing import List, Tuple
-import modules.config as config
+import gerber2blend.modules.config as config
 import os.path
 import logging
 import functools

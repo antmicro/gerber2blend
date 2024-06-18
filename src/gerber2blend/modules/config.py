@@ -2,8 +2,8 @@
 
 import os
 from os import getcwd, path
-import modules.file_io as fio
-import core.blendcfg
+import gerber2blend.modules.file_io as fio
+import gerber2blend.core.blendcfg
 from typing import Dict, Any, List, Tuple
 import logging
 import argparse
@@ -71,9 +71,9 @@ def init_global(arguments: argparse.Namespace) -> None:
     g2b_dir_path = path.dirname(__file__) + "/.."
 
     # Create blendcfg if it does not exist
-    core.blendcfg.check_and_copy_blendcfg(prj_path, g2b_dir_path)
+    gerber2blend.core.blendcfg.check_and_copy_blendcfg(prj_path, g2b_dir_path)
     # Read blendcfg file
-    blendcfg = core.blendcfg.open_blendcfg(prj_path, arguments.config_preset)
+    blendcfg = gerber2blend.core.blendcfg.open_blendcfg(prj_path, arguments.config_preset)
 
     configure_paths(arguments)
     configure_constants(arguments)
@@ -119,9 +119,7 @@ def configure_paths(arguments: argparse.Namespace) -> None:
     svg_path = fab_path + "SVG/"
 
     # paths:
-    mat_blend_path = g2b_dir_path + "/templates/materials.blend"
-
-    mat_library_path = model_library_path + "/lib/materials/pcb_materials.blend"
+    mat_blend_path = g2b_dir_path + "/templates/PCB_materials.blend"
 
 
 def configure_constants(arguments: argparse.Namespace) -> None:

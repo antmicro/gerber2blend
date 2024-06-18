@@ -101,7 +101,7 @@ def face_sel(obj: bpy.types.Object, pos: str, edge_verts: None | List[Tuple[floa
     bm = bmesh.from_edit_mesh(mesh)
     bm.faces.ensure_lookup_table()  # type: ignore
     kd = make_kd_tree(edge_verts)
-    for face in obj.data.polygons:
+    for face in obj.data.polygons:  # type: ignore
         if pos == "edge":
             # check vertical faces
             if abs(Vector(face.normal).z) <= 0.5:  # type: ignore
@@ -117,7 +117,7 @@ def face_sel(obj: bpy.types.Object, pos: str, edge_verts: None | List[Tuple[floa
             bm.faces[face.index].select = Vector(face.normal).z < -0.5  # type: ignore
         else:
             logger.error("Specify pos")
-    bmesh.update_edit_mesh(mesh)
+    bmesh.update_edit_mesh(mesh)  # type: ignore
 
 
 def face_desel(obj: bpy.types.Object) -> None:

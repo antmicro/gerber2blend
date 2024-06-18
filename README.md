@@ -7,8 +7,7 @@ Copyright (c) 2022-2024 Antmicro
 `gerber2blend` is an open-source utility dedicated to generating 3D models of Printed Circuit Boards (PCBs) in Blender (.blend) format.
 The tool uses Gerber (Gerber RS-274X) input files that are used for producing physical PCBs. 
 This makes the PCB visualization independent from the software used for designing it.
-Currently `gerber2blend` supports Blender 3.2+.
-Support for newer Blender versions will be added soon.
+Currently `gerber2blend` supports Blender 4.1+.
 
 # Installation
 
@@ -17,21 +16,19 @@ Support for newer Blender versions will be added soon.
 `gerber2blend` depends on the following packages:
 
 * gerbv
-* expect
 * inkscape >= 1.2
+* python3.11, python3.11-venv
 
-`gerber2blend` uses Blender 3.2 and its built-in Python3 interpreter, which are automatically installed during `gerber2blend` installation.
-This requires two more dependencies used for downloading and unpacking Blender installation archive:
-
-* wget
-* xz-utils
+Additionally to preview and modify the generated .blend file [Blender 4.1](https://www.blender.org/download/releases/4-1/) needs to be installed.
 
 ## Installation (Debian)
 
 1. Install the dependencies:
 
 ```bash
-sudo apt install gerbv expect inkscape wget xz-utils
+sudo apt-get update
+sudo apt install gerbv inkscape python3.11 python3.11-venv
+python3.11 -m pip install --upgrade pip
 ```
 
 2. Configure PATH:
@@ -45,7 +42,9 @@ export PATH=$HOME/.local/bin:$PATH
 ```bash
 git clone https://github.com/antmicro/gerber2blend.git
 cd gerber2blend
-./scripts/install.sh
+python3.11 -m venv venv
+source venv/bin/activate
+pip install .
 ```
 
 # Usage
@@ -57,12 +56,7 @@ To show available functionalities of `gerber2blend`, run:
 gerber2blend --help
 ```
 
-To open Blender with `gerber2blend`, run:
-```
-g2b_blender
-```
-
-For more information regarding Blender supported by the `gerber2blend` visit the [Blender 3.2 documentation](https://docs.blender.org/manual/en/3.2/).
+For more information regarding Blender supported by the `gerber2blend` visit the [Blender 4.1 documentation](https://docs.blender.org/manual/en/4.1/).
 
 ## License
 

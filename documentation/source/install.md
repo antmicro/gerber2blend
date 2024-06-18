@@ -21,23 +21,22 @@ You can do this by extending your `.bashrc` with as follows:
 export PATH=$HOME/.local/bin:$PATH
 ```
 
-Install `gerber2blend` requirements: `gerbv`, `expect`, `inkscape>=1.2`, `wget` and `xz-utils`
+Install `gerber2blend` requirements: `gerbv`, `python3.11`, `inkscape>=1.2`
 
 ### Debian/Ubuntu 
 
 To install it in Debian/Ubuntu run following command:
 ```
-sudo apt install gerbv expect inkscape wget xz-utils
+sudo apt install gerbv inkscape python3.11 python3.11-venv
 ```
 
 ----
 
 Then run the following command from the cloned repository root to install the tool:
 ```bash
-./scripts/install.sh
+python3.11 -m venv venv
+source /venv/bin/activate
+pip install .
 ```
-This installs the required dependencies, downloads a compatible Blender version and installs `gerber2blend` for use with this Blender version.
-
-Blender is installed in the `.g2b_blender` subdirectory of the cloned repository.
-Blender is currently supported in version `3.2`.
-
+This installs the required dependencies and installs `gerber2blend` compatibile with Blender.
+Blender is currently supported in version `4.1`.
