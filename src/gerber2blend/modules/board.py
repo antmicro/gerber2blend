@@ -147,6 +147,7 @@ def make_board() -> bpy.types.Object:
     # extrude board
     extrude_mesh(pcb, layer_thickness[0])
     cu.recalc_normals(pcb)
+    cu.make_sharp_edges(pcb)
 
     map_pcb_to_uv(pcb)
 
@@ -304,8 +305,7 @@ def get_area_by_type(area_type: str) -> Optional[bpy.types.Area]:
 
 
 def map_pcb_to_uv(pcb: bpy.types.Object) -> None:
-    """PCB surfaces UV mapping function"""
-
+    """PCB surfaces UV mapping function."""
     cu.face_sel(pcb, "top")
     bpy.ops.uv.cube_project(
         cube_size=1.0,
