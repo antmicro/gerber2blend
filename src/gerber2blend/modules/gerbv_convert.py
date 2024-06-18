@@ -39,10 +39,13 @@ TMP_F_SILKS = "tmp_fsilks"
 TMP_B_SILKS = "tmp_bsilks"
 TMP_F_MASK = "tmp_fmask"
 TMP_B_MASK = "tmp_bmask"
+TMP_F_MASK_SILKS = "tmp_fmask_for_silk"  # negated mask for silk cutout
+TMP_B_MASK_SILKS = "tmp_bmask_for_silk"  # negated mask for silk cutout
+MASK_BG_COLOR = "#aaaaaa"
+MASK_FG_COLOR = "#ffffff"
+MASK_FG_COLOR_ALPHA = "#ffffff99"
 TMP_ALPHAW_PTH = "alphaw-PTH-drl"
 TMP_ALPHAW_NPTH = "alphaw-NPTH-drl"
-TMP_ALPHAB_F_MASK = "alphab-F_Mask"
-TMP_ALPHAB_B_MASK = "alphab-B_Mask"
 
 logger = logging.getLogger(__name__)
 
@@ -225,8 +228,8 @@ def do_convert_layer_to_png() -> None:
         [
             (GBR_F_SILK, TMP_F_SILKS, HEX_BLACK, HEX_WHITE_ALPHA),
             (GBR_B_SILK, TMP_B_SILKS, HEX_BLACK, HEX_WHITE_ALPHA),
-            (GBR_F_MASK, TMP_F_MASK, HEX_BLACK, "#404040ff"),
-            (GBR_B_MASK, TMP_B_MASK, HEX_BLACK, "#404040ff"),
+            (GBR_F_MASK, TMP_F_MASK, MASK_BG_COLOR, MASK_FG_COLOR_ALPHA),
+            (GBR_B_MASK, TMP_B_MASK, MASK_BG_COLOR, MASK_FG_COLOR_ALPHA),
         ]
     )
 
@@ -260,28 +263,34 @@ def do_generate_displacement_maps() -> None:
     # Prepare transparent holes pngs
     copy_file(config.png_path, config.png_path, GBR_PTH + ".png", TMP_ALPHAW_PTH + ".png")
     copy_file(config.png_path, config.png_path, GBR_NPTH + ".png", TMP_ALPHAW_NPTH + ".png")
-    wand_operation(TMP_ALPHAW_PTH, fuzz=75, transparency="white", blur=[1, 8])
-    wand_operation(TMP_ALPHAW_NPTH, fuzz=75, transparency="white", blur=[1, 8])
-
-    # Prepare transparent mask pngs
-    wand_operation(GBR_F_MASK, out_file=TMP_ALPHAB_F_MASK, fuzz=75, transparency="black")
-    wand_operation(GBR_B_MASK, out_file=TMP_ALPHAB_B_MASK, fuzz=75, transparency="black")
-    wand_operation(TMP_F_MASK, transparency="black", blur=[0, 3])
-    wand_operation(TMP_B_MASK, transparency="black", blur=[0, 3])
+    wand_operation(TMP_ALPHAW_PTH, fuzz=75, transparency="white", blur=[1, 2])
+    wand_operation(TMP_ALPHAW_NPTH, fuzz=75, transparency="white", blur=[1, 2])
 
     # Adding blur to dispmap
-    wand_operation(OUT_F_DISPMAP, blur=[0, 6])
-    wand_operation(OUT_B_DISPMAP, blur=[0, 6])
+    wand_operation(OUT_F_DISPMAP, out_file=OUT_F_DISPMAP)
+    wand_operation(OUT_B_DISPMAP, out_file=OUT_B_DISPMAP)
+
+    # Prepare transparent masks pngs for silk cutout
+    wand_operation(TMP_F_MASK, out_file=TMP_F_MASK_SILKS, transparency=MASK_BG_COLOR, fuzz=15)
+    wand_operation(TMP_B_MASK, out_file=TMP_B_MASK_SILKS, transparency=MASK_BG_COLOR, fuzz=15)
+
+    # Prepare transparent masks pngs
+    wand_operation(TMP_F_MASK, out_file=TMP_F_MASK, transparency=MASK_FG_COLOR, fuzz=20)
+    wand_operation(TMP_B_MASK, out_file=TMP_B_MASK, transparency=MASK_FG_COLOR, fuzz=20)
+    wand_operation(TMP_F_MASK, out_file=TMP_F_MASK, transparency=MASK_BG_COLOR, alpha=0.3, fuzz=20)
+    wand_operation(TMP_B_MASK, out_file=TMP_B_MASK, transparency=MASK_BG_COLOR, alpha=0.3, fuzz=20)
 
     # Prepare transparent silks pngs + set silks alpha
-    prepare_silks(TMP_F_SILKS, TMP_F_SILKS)
-    prepare_silks(TMP_B_SILKS, TMP_B_SILKS)
+    prepare_silks(TMP_F_SILKS, out_file=TMP_F_SILKS, mask=TMP_F_MASK_SILKS)
+    prepare_silks(TMP_B_SILKS, out_file=TMP_B_SILKS, mask=TMP_B_MASK_SILKS)
 
     # Put silks on dispmap
     png_list = [TMP_F_SILKS, TMP_F_MASK, TMP_ALPHAW_PTH, TMP_ALPHAW_NPTH]
-    add_pngs(OUT_F_DISPMAP, png_list, out=OUT_F_DISPMAP)
+    add_pngs(OUT_F_DISPMAP, png_list, out_file=OUT_F_DISPMAP)
     png_list = [TMP_B_SILKS, TMP_B_MASK, TMP_ALPHAW_PTH, TMP_ALPHAW_NPTH]
-    add_pngs(OUT_B_DISPMAP, png_list, out=OUT_B_DISPMAP)
+    add_pngs(OUT_B_DISPMAP, png_list, out_file=OUT_B_DISPMAP)
+    wand_operation(OUT_F_DISPMAP, out_file=OUT_F_DISPMAP, blur=[0, 2])
+    wand_operation(OUT_B_DISPMAP, out_file=OUT_B_DISPMAP, blur=[0, 2])
 
 
 def get_gerbers_to_convert_to_png() -> List[str]:
@@ -336,8 +345,7 @@ def generate_displacement_map_png(filename: str) -> None:
     rc = os.system(
         f"gerbv {gbr_path}{GBR_PTH}.gbr --background=#555555 {fg}=#000000ff \
         {gbr_path}{GBR_NPTH}.gbr {fg}=#000000ff \
-        {gbr_path}{side}_Mask.gbr {fg}=#404040ff \
-        {gbr_path}{side}_Cu.gbr {fg}=#888888ff \
+        {gbr_path}{side}_Cu.gbr {fg}=#808080ff \
         {gbr_path}{GBR_F_MASK}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_MASK}.gbr {fg}={HEX_BLACK_ALPHA} \
         {gbr_path}{GBR_F_FAB}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_FAB}.gbr {fg}={HEX_BLACK_ALPHA} \
         {gbr_path}{GBR_F_SILK}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_SILK}.gbr {fg}={HEX_BLACK_ALPHA} \
@@ -471,6 +479,7 @@ def wand_operation(
     out_file: str = "",
     fuzz: int = 0,
     transparency: str = "",
+    alpha: float = 0.0,
     blur: None | List[int] = None,
 ) -> None:
     """Imagemagick-like operation."""
@@ -479,38 +488,47 @@ def wand_operation(
         return
     with Image(filename=image_path) as png:
         percent_fuzz = int(png.quantum_range * fuzz / 100)
-        if transparency is not None:
-            png.transparent_color(color=Color(transparency), alpha=0.0, fuzz=percent_fuzz)
+        if transparency != "":
+            png.transparent_color(color=Color(transparency), alpha=alpha, fuzz=percent_fuzz)
         if blur is not None:
             png.blur(blur[0], blur[1])
-        if out_file is None:
+        if out_file == "":
             out_file = in_file
         png.save(filename=config.png_path + out_file + ".png")
 
 
-def add_pngs(in1: str, in_list: List[str], out: str) -> None:
+def add_pngs(in_file: str, in_list: List[str], out_file: str = "") -> None:
     """Join PNGs on one another."""
-    with Image(filename=config.png_path + in1 + ".png") as png:
+    if out_file == "":
+        out_file = in_file
+    with Image(filename=config.png_path + in_file + ".png") as png:
         png.background_color = Color("transparent")
         for file in in_list:
-            if not os.path.exists(file):
+            file_path = config.png_path + file + ".png"
+            if not os.path.exists(file_path):
                 continue
-            with Image(filename=config.png_path + file + ".png") as png2:
+            with Image(filename=file_path) as png2:
+                png2.transparent_color(color=Color("white"), alpha=0.0)
                 png.composite(image=png2, gravity="center")
+        png.save(filename=config.png_path + out_file + ".png")
 
-        png.save(filename=config.png_path + out + ".png")
 
-
-def prepare_silks(in_file: str, out_file: str) -> None:
-    """Prepare transparent silks pngs + set silks alpha."""
+def prepare_silks(in_file: str, mask: str = "", out_file: str = "") -> None:
+    """Cutout mask areas + prepare transparent silks pngs + set silks alpha."""
+    if out_file == "":
+        out_file = in_file
     with Image(filename=config.png_path + in_file + ".png") as png:
+        if mask != "":
+            with Image(filename=config.png_path + mask + ".png") as png2:
+                png2.colorize(color=Color("black"), alpha=Color(MASK_FG_COLOR))
+                png.composite(image=png2, gravity="center")
         png.transparent_color(color=Color("black"), alpha=0.0)
         levelize_matrix = [
             [1, 0, 0, 0, 1],
             [0, 1, 0, 0, 1],
             [0, 0, 1, 0, 1],
             [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0.3],
+            [0, 0, 0, 0, 0.5],
         ]
         png.color_matrix(levelize_matrix)
         png.save(filename=config.png_path + out_file + ".png")
