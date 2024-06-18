@@ -55,8 +55,8 @@ def make_board() -> bpy.types.Object:
     """Generate main board mesh."""
     logger.info("Generating board")
 
-    in_list, layer_thickness = generate_inner_layer_list()
-    logging.debug(f"Found layer list: {in_list}")
+    all_list, layer_thickness = generate_all_layers_list()
+    logging.debug(f"Found layer list: {all_list}")
     logging.debug(f"Thickness of layers: {layer_thickness}")
     board_col = cu.create_collection("Board")
 
@@ -155,27 +155,28 @@ def make_board() -> bpy.types.Object:
     process_edge_materials(pcb, plated_pcb_verts, bare_pcb_verts)  # type: ignore
 
     if config.blendcfg["EFFECTS"]["STACKUP"]:
-        logger.info("Creating layers (" + str(len(in_list)) + ")")
-        for i in range(len(in_list)):
+        logger.info("Creating layers (" + str(len(all_list)) + ")")
+        z_counter = layer_thickness[0]
+        for i in range(len(all_list)):
             pcb.select_set(True)
             # now original is selected
             bpy.ops.object.duplicate()
             # now duplicate is selected
             new_obj = bpy.context.selected_objects[0]  # type:ignore
             new_obj.name = "PCB_layer" + str(i + 2)
-            logging.debug(f"Created layer {new_obj.name} at Z={sum(layer_thickness[0 : i + 1])}")
+            layer_width = layer_thickness[i + 1]
+            logging.debug(f"Created layer {new_obj.name} at Z={z_counter:.3f} with width={layer_width:.3f}")
             cu.link_obj_to_collection(new_obj, board_col)
-            new_obj.location += Vector((0, 0, sum(layer_thickness[0 : i + 1])))  # type: ignore
+            # update layer thickness
+            for vert in new_obj.data.vertices:  # type: ignore
+                if vert.co[2] >= 0.0001:
+                    vert.co[2] = layer_width
+            # move layer up
+            new_obj.location.z = z_counter  # type: ignore
+            z_counter += layer_width
             bpy.ops.object.select_all(action="DESELECT")
 
-    process_materials(board_col, in_list)
-
-    # update layer thickness, done after process_materials
-    # to keep set(pcb_verts).intersection(outline_verts) working
-    for i, obj in enumerate(board_col.objects):
-        for vert in obj.data.vertices:
-            if vert.co[2] >= 0.0001:
-                vert.co[2] = layer_thickness[i]
+    process_materials(board_col, all_list)
 
     # board measurements
     logger.info(
@@ -203,21 +204,6 @@ def make_board() -> bpy.types.Object:
         if bbox_mesh.vertices[i].co[2] >= 0.0001:
             bbox_mesh.vertices[i].co[2] = stk.get().thickness
 
-    # seperate layers
-    thickness_sum = 0.0
-    found_dielectric = 0
-    sorted_layers = sorted(empty_obj.children, key=lambda x: int(x.name[9:]))  # type:ignore
-    layers_count = len(sorted_layers)
-    if config.blendcfg["EFFECTS"]["STACKUP"]:
-        for layer, thick in stk.get().stackup_data[::-1]:
-            if thick is None or found_dielectric > layers_count - 1:
-                continue
-            if "dielectric" in layer or "Mask" in layer:
-                Vector(sorted_layers[found_dielectric].location).z += thickness_sum  # type:ignore
-                found_dielectric += 1
-            else:
-                thickness_sum += thick
-
     project_col = cu.create_collection(config.PCB_name)
     for col in bpy.context.scene.collection.children:
         if col != project_col:
@@ -230,17 +216,17 @@ def make_board() -> bpy.types.Object:
     return empty_obj
 
 
-def generate_inner_layer_list() -> Tuple[List[str], List[float]]:
-    """Generate a list of inner layer PNGs that need to be included in the model.
+def generate_all_layers_list() -> Tuple[List[str], List[float]]:
+    """Generate a list of all layer PNGs that need to be included in the model.
 
     Additionally, returns the thickness of each layer.
     """
-    in_list: List[str] = []
+    all_list: List[str] = []
     all_layer_thickness = [stk.get().thickness]
 
     # When stackup generation is disabled, don't need to do anything else
     if not config.blendcfg["EFFECTS"]["STACKUP"]:
-        return in_list, all_layer_thickness
+        return all_list, all_layer_thickness
 
     # Collect all inner layer PNG files from the fabrication data folder
     in_list = sorted(
@@ -264,7 +250,8 @@ def generate_inner_layer_list() -> Tuple[List[str], List[float]]:
     stk_data = stk.get().stackup_data
     if not stk_data:
         # When no stackup data is provided, divide the configured PCB thickness evenly
-        all_layer_thickness = [stk.get().thickness / (len(all_list) + 1) for _ in range(len(all_list) + 1)]
+        layer_count = len(all_list) + 1
+        all_layer_thickness = [stk.get().thickness / layer_count] * layer_count
     else:
         # Find the thickness of "dielectric <N>" entries in the stackup and sort
         # based on their names. This is used as the thickness of the inner layers.
@@ -274,19 +261,19 @@ def generate_inner_layer_list() -> Tuple[List[str], List[float]]:
                 f"Stackup layer mismatch between exported gerber files and stackup.json\n"
                 f"Found {len(in_list)} gerber file(s), found {len(stk_in_list)} layer(s) defined in JSON. Aborting!"
             )
-        in_layer_thickness = [
-            pair[1]
-            for pair in sorted(
-                list(filter(lambda pair: "dielectric" in pair[0], stk_data)),
-                reverse=True,
-            )
+        in_layer_thickness = [pair[1] for pair in stk_data if "dielectric" in pair[0]]
+        cu_layer_thickness = [pair[1] for pair in stk_data if pair[0].startswith(GBR_IN) and ".Cu" in pair[0]]
+        for i, val in enumerate(cu_layer_thickness):
+            in_layer_thickness[i] += val
+        in_layer_thickness.reverse()
+        front_thickness = [
+            sum([pair[1] for pair in stk_data if isinstance(pair[1], float) and pair[0].startswith("F.")])
+        ]
+        back_thickness = [
+            sum([pair[1] for pair in stk_data if isinstance(pair[1], float) and pair[0].startswith("B.")])
         ]
         # Sandwich the inner layers between thicknesses for Back and Front mask
-        all_layer_thickness = (
-            [pair[1] for pair in stk_data if "B.Mask" in pair[0]]
-            + in_layer_thickness
-            + [pair[1] for pair in stk_data if "F.Mask" in pair[0]]
-        )
+        all_layer_thickness = back_thickness + in_layer_thickness + front_thickness
 
     return all_list, all_layer_thickness
 
