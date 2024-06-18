@@ -3,5 +3,26 @@
 !img/*png
 *swo
 log
-.g2b_blender/*
-g2b_blender.tar.xz
+.g2b_blender*/*
+g2b_blender*.tar.xz
+*.blend1
+
+*.pyc
+__pycache__
+*.tmp
+tmp
+.pylintrc
+dist
+
+#Ingore external modules
+ext_modules
+
+tests/results
+tests/test_logo
+htmlcov
+
+#Ignore pip build with -e flag
+build/
+*.egg-info/
+
+

@@ -2,10 +2,10 @@
 
 import bpy
 import math
-import modules.config as config
-import modules.custom_utilities as cu
-import modules.file_io as fio
-from modules.config import (
+import gerber2blend.modules.config as config
+import gerber2blend.modules.custom_utilities as cu
+import gerber2blend.modules.file_io as fio
+from gerber2blend.modules.config import (
     GBR_F_SILK,
     GBR_B_SILK,
     GBR_F_MASK,
@@ -111,38 +111,39 @@ def set_soldermask_color(soldermask_color: Tuple[str, str]) -> None:
         "Blue": [0x02346D, 0x102141],
         "Red": [0xD01B10, 0x83140B],
     }
-    if len(soldermask_color) == 2:
-        [ramp_val, mix_val] = soldermask_color  # custom colors
+    masked_color_val: int = 0
+    if len(soldermask_color) == 2:  # custom colors
+        masked_color_val = int(soldermask_color[0], 16)
+        unmasked_color_val = int(soldermask_color[1], 16)
     else:
-        # preset color used
-        [ramp_val, mix_val] = colors_dict[soldermask_color[0]]  # type: ignore
+        [masked_color_val, unmasked_color_val] = colors_dict[soldermask_color[0]]  # preset color used
 
-    color_ramp_node = bpy.data.node_groups["Color_group"].nodes["ColorRamp.003"]
-    mix_node = bpy.data.node_groups["Color_group"].nodes["Mix.002"]
+    masked_color_node = bpy.data.node_groups["Color_group"].nodes["Masked_Color"]
+    unmasked_color_node = bpy.data.node_groups["Color_group"].nodes["Unmasked_Color"]
 
-    color_ramp_node.color_ramp.elements[1].color = hex_to_rgba(ramp_val, 1.0)  # type: ignore
-    mix_node.inputs[1].default_value = hex_to_rgba(mix_val, 1.0)  # type: ignore
+    masked_color_node.outputs[0].default_value = hex_to_rgba(masked_color_val, 1.0)  # type: ignore
+    unmasked_color_node.outputs[0].default_value = hex_to_rgba(unmasked_color_val, 1.0)  # type: ignore
 
 
 def set_silkscreen_color(silk_color: str) -> None:
     """Set color of silkscreen shader node (black or white)."""
     colors_dict = {"Black": 0x000000, "White": 0xB3BEC2}
     mix_node = bpy.data.node_groups["Color_group"].nodes["Mix"]
-    mix_node.inputs[1].default_value = hex_to_rgba(colors_dict[silk_color[0]], 1.0)  # type: ignore
+    mix_node.inputs["A"].default_value = hex_to_rgba(colors_dict[silk_color[0]], 1.0)  # type: ignore
 
 
 def process_edge_materials(
     pcb: bpy.types.Object, plated_verts: List[Tuple[float]], bare_verts: List[Tuple[float]]
 ) -> None:
     """Assign gold or edge material to model sides."""
-    materials = ["main_pcb_gold", "main_pcb_edge"]
+    materials = ["main_pcb_edge_gold", "main_pcb_edge_bare"]
     load_materials(materials)
 
     for material in materials:
         append_material(pcb, material)
 
-    assign_material(pcb, "main_pcb_gold", "edge", plated_verts)
-    assign_material(pcb, "main_pcb_edge", "edge", bare_verts)
+    assign_material(pcb, "main_pcb_edge_gold", "edge", plated_verts)
+    assign_material(pcb, "main_pcb_edge_bare", "edge", bare_verts)
 
 
 def process_materials(board_col: bpy.types.Collection, in_list: List[str]) -> None:

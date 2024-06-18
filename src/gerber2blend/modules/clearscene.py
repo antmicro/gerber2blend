@@ -1,10 +1,10 @@
 """Module for clearing default Scene."""
 
 import bpy
-import core.module
+import gerber2blend.core.module
 
 
-class ClearScene(core.module.Module):
+class ClearScene(gerber2blend.core.module.Module):
     """Module for clearing the scene."""
 
     def execute(self) -> None:

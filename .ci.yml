@@ -8,30 +8,30 @@ image: $CI_DOCS_DOCKER_IMAGE
 
 type-correctness:
   stage: code-checks
-  image: 'external/docker/debian:sid'
+  image: 'external/docker/debian:bookworm'
   tags: ['ace-x86_64']
   variables:
    SCALENODE_CPU: 4
-   SCALENODE_RAM: 2048
+   SCALENODE_RAM: 4096
    SCALENODE_DISK: 30
   allow_failure: true
   script:
-    - apt update && apt -qqy install python3 pip python3-poetry
-    - poetry add mypy fake-bpy-module-3.2
+    - apt update && apt -qqy install pip python3-poetry python3.11
+    - poetry add mypy fake-bpy-module-4.1
     - poetry install
     - poetry run mypy --install-types --non-interactive --disallow-untyped-defs src/
 
 code-formatting:
   stage: code-checks
-  image: 'external/docker/debian:sid'
+  image: 'external/docker/debian:bookworm'
   tags: ['ace-x86_64']
   variables:
    SCALENODE_CPU: 4
-   SCALENODE_RAM: 2048
+   SCALENODE_RAM: 4096
    SCALENODE_DISK: 30
   allow_failure: true
   script:
-    - apt update && apt -qqy install python3 pip python3-poetry
+    - apt update && apt -qqy install pip python3-poetry python3.11
     - poetry add black
     - poetry install
     - poetry run black --check src/
@@ -39,19 +39,26 @@ code-formatting:
 test:
   stage: test
   tags: ['ace-x86_64']
-  image: 'external/docker/debian:sid'
+  image: 'external/docker/debian:bookworm'
   variables:
    SCALENODE_CPU: 4
-   SCALENODE_RAM: 8000
+   SCALENODE_RAM: 16000
    SCALENODE_DISK: 30
   before_script:
     - export PATH=$HOME/.local/bin:$PATH
-    - apt-get -qqy update
-    - apt-get -qqy install kicad git gerbv expect inkscape wget xz-utils
+    - mkdir -p logs
+    - echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
+    - apt-get -qqy update >> logs/debian_install.log
+    - apt-get -qqy update --fix-missing >> logs/debian_install.log
+    - apt update && apt -qqy install git pip python3-poetry gerbv inkscape python3.11 python3.11-venv >> logs/debian_install.log
+    - apt-get -qqy install -t bookworm-backports kicad >> logs/debian_install.log
     - git clone --quiet https://github.com/antmicro/jetson-orin-baseboard.git
-    - ./scripts/install.sh
+
   script:
     - export PATH=$HOME/.local/bin:$PATH
+    - python3.11 -m venv venv
+    - source venv/bin/activate
+    - python3.11 -m pip install .
     - cd jetson-orin-baseboard
     - mkdir fab
     - kicad-cli pcb export gerbers --no-protel-ext -o fab/ jetson-orin-baseboard.kicad_pcb
@@ -59,9 +66,18 @@ test:
     - gerber2blend
   artifacts:
     paths:
-      - jetson-orin-baseboard
+      - jetson-orin-baseboard/assets
+      - jetson-orin-baseboard/doc
+      - jetson-orin-baseboard/img
+      - jetson-orin-baseboard/fab
+      - jetson-orin-baseboard/*.kicad*
+      - jetson-orin-baseboard/sym-lib-table
+      - jetson-orin-baseboard/fp-lib-table
+      - jetson-orin-baseboard/README.md
+      - jetson-orin-baseboard/LICENSE
+      - jetson-orin-baseboard/blendcfg.yaml
 
-build:
+docs-build:
   stage: build
   tags: ['ace-x86_64']
   before_script:
@@ -78,11 +94,11 @@ build:
       - build
       - $CI_DOCS_ARCHIVE
 
-deploy:
+docs-deploy:
   variables:
     GIT_STRATEGY: none
   dependencies:
-    - build
+    - docs-build
   stage: deploy
   tags: ['docs']
   script: echo 'Deploying docs'

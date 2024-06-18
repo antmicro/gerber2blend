@@ -9,8 +9,9 @@ This file can be adjusted to match a project, for example by changing the names 
 
 ### Required input files
 
-`gerber2blend` operates on fabrication outputs found in the `fab/` subdirectory in the directory from which the tool is executed.
+By default `gerber2blend` operates on fabrication outputs found in the `fab/` subdirectory in the directory from which the tool is executed.
 In order to generate a model, first create a `fab/` directory:
+
 ```
 cd [path to project repository]/
 mkdir fab/
@@ -23,9 +24,9 @@ Next, you must generate the fabrication outputs using the EDA of the project.
   - Front/Back Copper
   - Front/Back Silkscreen
   - Front/Back Mask
-  - Front/Back Fabrication
-  - Inner Copper
-- Drill Files (PTH/NPTH)
+  - Front/Back Fabrication (optional)
+  - Inner Copper (optional)
+- Drill Files (PTH/NPTH) (optional)
 
 ```{note}
 The default configuration supports KiCad7 filenames for the fab files out of the box, while others will require tweaks to the `blendcfg.yaml` file.
