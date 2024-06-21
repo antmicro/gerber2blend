@@ -1,0 +1,67 @@
+name: test
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  TestGerber2blend:
+    runs-on: ubuntu-latest
+    container:
+        image: debian:bookworm
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+        - uses: actions/checkout@v4
+          with:
+            submodules: false
+
+        - name: Install dependencies
+          run: |
+            echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
+            apt -qqy update
+            apt -qqy install git pip python3-poetry gerbv inkscape python3.11 python3.11-venv
+            apt -qqy install -t bookworm-backports kicad
+
+        - name: Clone Jetson Orin Baseboard HW repository
+          run: |
+            git clone --quiet https://github.com/antmicro/jetson-orin-baseboard.git
+
+        - name: Install gerber2blend to venv
+          run: |
+            python3.11 -m venv venv
+            . venv/bin/activate
+            python3.11 -m pip install .
+
+        - name: Generate Gerber files for HW project
+          working-directory: ./jetson-orin-baseboard/
+          run: |
+            mkdir fab/
+            kicad-cli pcb export gerbers --no-protel-ext -o fab/ jetson-orin-baseboard.kicad_pcb
+            kicad-cli pcb export drill --format gerber --excellon-separate-th -o fab/ jetson-orin-baseboard.kicad_pcb
+
+        - name: Generate blend from Gerber files
+          working-directory: ./jetson-orin-baseboard/
+          run: |
+            . ${GITHUB_WORKSPACE}/venv/bin/activate
+            gerber2blend -d
+
+        - uses: actions/upload-artifact@v3
+          with:
+            name: HW project artifacts
+            path: |
+              ./jetson-orin-baseboard/assets/*
+              ./jetson-orin-baseboard/doc/*
+              ./jetson-orin-baseboard/img/*
+              ./jetson-orin-baseboard/fab/*
+              ./jetson-orin-baseboard/*.kicad*
+              ./jetson-orin-baseboard/sym-lib-table
+              ./jetson-orin-baseboard/fp-lib-table
+              ./jetson-orin-baseboard/README.md
+              ./jetson-orin-baseboard/LICENSE
+              ./jetson-orin-baseboard/blendcfg.yaml
