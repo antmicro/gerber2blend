@@ -153,7 +153,6 @@ def make_board() -> bpy.types.Object:
 
     # add materials to board edges
     process_edge_materials(pcb, plated_pcb_verts, bare_pcb_verts)  # type: ignore
-
     if config.blendcfg["EFFECTS"]["STACKUP"]:
         logger.info("Creating layers (" + str(len(all_list)) + ")")
         z_counter = layer_thickness[0]
@@ -248,9 +247,9 @@ def generate_all_layers_list() -> Tuple[List[str], List[float]]:
     # Sandwich the inner layers between Back and Front Cu
     all_list = [f"{GBR_B_CU}.png"] + in_list + [f"{GBR_F_CU}.png"]
     stk_data = stk.get().stackup_data
+    layer_count = len(all_list) + 1
     if not stk_data:
         # When no stackup data is provided, divide the configured PCB thickness evenly
-        layer_count = len(all_list) + 1
         all_layer_thickness = [stk.get().thickness / layer_count] * layer_count
     else:
         # Find the thickness of "dielectric <N>" entries in the stackup and sort
@@ -262,18 +261,31 @@ def generate_all_layers_list() -> Tuple[List[str], List[float]]:
                 f"Found {len(in_list)} gerber file(s), found {len(stk_in_list)} layer(s) defined in JSON. Aborting!"
             )
         in_layer_thickness = [pair[1] for pair in stk_data if "dielectric" in pair[0]]
-        cu_layer_thickness = [pair[1] for pair in stk_data if pair[0].startswith(GBR_IN) and ".Cu" in pair[0]]
-        for i, val in enumerate(cu_layer_thickness):
-            in_layer_thickness[i] += val
+        cu_layer_thickness = [pair[1] for pair in stk_data if ".Cu" in pair[0]]
+        sum_cu = sum(cu_layer_thickness)
         in_layer_thickness.reverse()
         front_thickness = [
-            sum([pair[1] for pair in stk_data if isinstance(pair[1], float) and pair[0].startswith("F.")])
+            sum(
+                [
+                    pair[1]
+                    for pair in stk_data
+                    if isinstance(pair[1], float) and pair[0].startswith("F.") and not pair[0].endswith(".Cu")
+                ]
+            )
         ]
         back_thickness = [
-            sum([pair[1] for pair in stk_data if isinstance(pair[1], float) and pair[0].startswith("B.")])
+            sum(
+                [
+                    pair[1]
+                    for pair in stk_data
+                    if isinstance(pair[1], float) and pair[0].startswith("B.") and not pair[0].endswith(".Cu")
+                ]
+            )
         ]
         # Sandwich the inner layers between thicknesses for Back and Front mask
         all_layer_thickness = back_thickness + in_layer_thickness + front_thickness
+        for i, _val in enumerate(all_layer_thickness):
+            all_layer_thickness[i] += sum_cu / layer_count
 
     return all_list, all_layer_thickness
 
