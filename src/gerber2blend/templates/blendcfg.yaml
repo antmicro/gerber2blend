@@ -31,3 +31,4 @@ default: &default
     - CLEARSCENE:
     - GERBCONVERT:
     - BOARD:
+    - VERSIONSTAMPER:
