@@ -188,16 +188,13 @@ def do_convert_gerb_to_svg() -> None:
     with open(f"{config.svg_path}{GBR_EDGE_CUTS}.svg", "rt") as handle:
         svg_data = handle.read().split("\n")
         edge_svg_dimensions_data = svg_data[1]
-        edge_cuts_lines = [line for line in svg_data if "<path" in line]
-
-    # Remove frame from layers
-    map_input_list = [GBR_PTH, GBR_NPTH]
+    # Remove frame from layers and possible edge cuts (when edges cross with holes)
+    map_input_list = [GBR_EDGE_CUTS, GBR_PTH, GBR_NPTH]
     with Pool() as p:
         p.map(
             partial(
                 correct_frame_in_svg,
                 frame=edge_svg_dimensions_data,
-                frame_lines=edge_cuts_lines,
             ),
             map_input_list,
         )
@@ -391,16 +388,15 @@ def gbr_to_svg_convert(file_name: str) -> None:
     if not os.path.isfile(gbr_file_path):
         raise RuntimeError(f"Gerber file {gbr_file_path} does not exist!")
 
-    rc = os.system(
-        f"gerbv {gbr_file_path} --foreground={HEX_BLACK} \
-        {gbr_path}{GBR_EDGE_CUTS}.gbr --foreground={HEX_BLACK_ALPHA} \
-        -o {svg_file_path} --export=svg 2>/dev/null"
-    )
+    gerbv_command = f"gerbv {gbr_file_path} --foreground={HEX_BLACK} \
+    {gbr_path}{GBR_EDGE_CUTS}.gbr --foreground={HEX_WHITE} \
+    -o {svg_file_path} --export=svg 2>/dev/null"
+    rc = os.system(gerbv_command)
     if rc != 0:
         raise RuntimeError(f"Failed to convert Gerbers to SVG: gerbv returned exit code {rc}")
 
 
-def correct_frame_in_svg(data: str, frame: str, frame_lines: List[str]) -> None:
+def correct_frame_in_svg(data: str, frame: str) -> None:
     """Correct dimension of svg file based on edge cuts layer."""
     file_path = config.svg_path + data + ".svg"
     if not os.path.exists(file_path):
@@ -412,7 +408,7 @@ def correct_frame_in_svg(data: str, frame: str, frame_lines: List[str]) -> None:
         return
 
     svg_data[1] = frame
-    corrected_svg = [line for line in svg_data if line not in frame_lines]
+    corrected_svg = [line for line in svg_data if "rgb(100%,100%,100%)" not in line]
     with open(file_path, "wt") as handle:
         handle.write("\n".join(corrected_svg))
 
