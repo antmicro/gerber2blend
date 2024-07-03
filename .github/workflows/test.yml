@@ -25,7 +25,7 @@ jobs:
           run: |
             echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
             apt -qqy update
-            apt -qqy install git pip python3-poetry gerbv inkscape python3.11 python3.11-venv
+            apt -qqy install git pip python3-poetry gerbv inkscape python3.11 pipx
             apt -qqy install -t bookworm-backports kicad
 
         - name: Clone Jetson Orin Baseboard HW repository
@@ -34,9 +34,7 @@ jobs:
 
         - name: Install gerber2blend to venv
           run: |
-            python3.11 -m venv venv
-            . venv/bin/activate
-            python3.11 -m pip install .
+            python3.11 -m pipx install .
 
         - name: Generate Gerber files for HW project
           working-directory: ./jetson-orin-baseboard/
