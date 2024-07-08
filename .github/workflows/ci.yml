@@ -6,20 +6,19 @@ concurrency:
 
 on:
   push:
-    branches: [main]
+    branches: [gh-fix-ci]
   pull_request:
 
 jobs:
   DeployDocs:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/gh-fix-ci'
     steps:
         - uses: actions/checkout@v4
           with:
             submodules: false
         - name: Install dependencies
           run: |
-            pip3 install .
             pip install -r documentation/requirements.txt
         - name: Build docs and static demo
           run: |
