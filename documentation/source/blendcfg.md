@@ -2,8 +2,8 @@
 
 You can customize outputs by editing the `blendcfg.yaml` file which defines rendering options and variants to be generated. 
 The file needs to be placed in the main directory of the hardware project.
-A default `blendcfg.yaml` is generated in the project directory when one does not exist.
-Alternatively it can be copied manually from this repo, from the [`templates/blendcfg.yaml`](../../templates/blendcfg.yaml) file.
+A default `blendcfg.yaml` is copied into the project directory when one does not exist.
+Alternatively it can be copied from the template file using `gerber2blend` with `-g` argument.
 
 The file includes the following config sections:
 
@@ -17,11 +17,16 @@ General board and conversion settings:
 * `SOLDERMASK` - soldermask color on PCB texture, options: `Black` (default), `White`, `Green`, `Blue`, `Red`. To use custom RGB values, input a pair of hex values: `AABBCC, DDEEFF` (colors for areas with and without copper beneath). `gerber2blend` converts provided RGB codes to Blender color space.
 * `USE_INKSCAPE` - helper Inkscape SVG convert operation that can be used for boards with footprints with overlapping holes that cause problems with generating a PCB mesh from Gerber-based SVG files. Requires Inkscape >1.2.
 
-### `EFFECTS` section
+### `EFFECTS`
 Enables additional render effects:
-* `STACKUP`- generates separate models for each layer of the PCB, requires `stackup.json` to be provided in the `fab/` directory. This file format is specified in the [Getting started secton](getting-started.md#sackup-format).
+* `STACKUP`- generates separate models for each layer of the PCB, requires `stackup.json` to be provided in the `fab/` directory. This file format is specified in the [Getting started secton](quickstart.md#stackup-format).
+* `SOLDER`- generates solder on pads of mounted components, requires solder paste gerbers to be provided in the `fab/` directory.
 
-### `GERBER_FILENAMES` section
+```{note}
+To properly generate on all pads when using `SOLDER` effect, ensure that solder paste is exported on THT ones as well when exporting Gerber files (this may not be the default behavior of yours ECAD exporter).
+```
+
+### `GERBER_FILENAMES`
 
 Configuration for input Gerber filenames.
 Each of the following options specifies a wildcard pattern - the following operations are supported:
@@ -42,10 +47,12 @@ Gerber filenames:
 * `BACK_CU` - pattern for the Back Copper layer Gerber
 * `FRONT_FAB` - pattern for the Front Fab Gerber _(optional)_
 * `BACK_FAB` - pattern for the Back Fab Gerber _(optional)_
+* `FRONT_PASTE` - pattern for the Front Paste Gerber _(optional)_
+* `BACK_PASTE` - pattern for the Back Paste Gerber _(optional)_
 
 Layers marked as _(optional)_ can be removed from `blendcfg.yaml` to skip using them during mesh generation. In case optional layers are missing their Gerber files in `fab/` directory while they are listed in `GERBER_FILENAMES` section, `gerber2blend` will throw a warning but will continue working.
 
-### `STAGES` section
+### `STAGES`
 A list that defines modules to be run when executing `gerber2blend`.
 The module names are followed by a `:`, for example:
 

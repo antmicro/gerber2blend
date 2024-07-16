@@ -11,6 +11,10 @@ import argparse
 # displacement map outputs from gerber -> png conversion
 OUT_F_DISPMAP = "F_dispmap"
 OUT_B_DISPMAP = "B_dispmap"
+
+# solder placement
+OUT_F_SOLDER = "F_Solder"
+OUT_B_SOLDER = "B_Solder"
 # names of intermediate files in the fab/SVG/ directory, without extension
 # Gerber files used as input are copied under these names
 GBR_EDGE_CUTS = "Edge_Cuts"
@@ -24,6 +28,8 @@ GBR_F_CU = "F_Cu"
 GBR_B_CU = "B_Cu"
 GBR_F_FAB = "F_Fab"
 GBR_B_FAB = "B_Fab"
+GBR_F_PASTE = "F_Paste"
+GBR_B_PASTE = "B_Paste"
 # compared to the above, this is used as a constant prefix for the name.
 # There will be many inner layers, so each is suffixed in increments of
 # 1, starting from 0 (In_0, In_1, ..)
@@ -51,7 +57,9 @@ fab_path: str = ""
 prj_path: str = ""
 stackup_data: List[Tuple[str, float]] = []
 pcbthickness: float = 0.0
-pcbscale: float = 0.0
+pcbscale_gerbv: float = 0.0
+pcbscale_vtracer: float = 0.0
+solder: bool = True
 
 
 def init_global(arguments: argparse.Namespace) -> None:
@@ -66,6 +74,7 @@ def init_global(arguments: argparse.Namespace) -> None:
     global blendcfg
     global args
     global g2b_dir_path
+    global solder
 
     prj_path = getcwd() + "/"
     g2b_dir_path = path.dirname(__file__) + "/.."
@@ -77,6 +86,7 @@ def init_global(arguments: argparse.Namespace) -> None:
 
     configure_paths(arguments)
     configure_constants(arguments)
+    solder = blendcfg["EFFECTS"].get("SOLDER", True)
 
     args = arguments
 
@@ -130,7 +140,9 @@ def configure_constants(arguments: argparse.Namespace) -> None:
         arguments: CLI arguments
 
     """
-    global pcbscale
+    global pcbscale_gerbv
+    global pcbscale_vtracer
 
     blender_ratio = 2.8349302554764217
-    pcbscale = 1000 * blender_ratio
+    pcbscale_gerbv = 1000 * blender_ratio
+    pcbscale_vtracer = 0.9 * 1000 * 100 / blendcfg["SETTINGS"]["DPI"]

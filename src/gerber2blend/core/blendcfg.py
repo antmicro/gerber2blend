@@ -113,6 +113,8 @@ CONFIGURATION_SCHEMA = {
         "BACK_CU": Field("string"),
         "FRONT_FAB": Field("string", optional=True),
         "BACK_FAB": Field("string", optional=True),
+        "FRONT_PASTE": Field("string", optional=True),
+        "BACK_PASTE": Field("string", optional=True),
     },
     "EFFECTS": {
         "STACKUP": Field("bool"),

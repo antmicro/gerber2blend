@@ -59,6 +59,12 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="default",
     )
+    parser.add_argument(
+        "-g",
+        "--get-config",
+        help="Copy blendcfg.yaml to CWD and exit",
+        action="store_true",
+    )
 
     return parser.parse_args()
 
@@ -153,6 +159,8 @@ def main() -> None:
     gerber2blend.core.log.set_logging(args.debug)
     try:
         config.init_global(args)
+        if args.get_config:
+            sys.exit(0)
         run_modules_for_config(config.blendcfg)
     except Exception as e:
         logger.error("An error has occured during processing!")

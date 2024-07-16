@@ -20,11 +20,14 @@ from gerber2blend.modules.config import (
     GBR_EDGE_CUTS,
     GBR_F_CU,
     GBR_B_CU,
+    OUT_F_SOLDER,
+    OUT_B_SOLDER,
 )
 from gerber2blend.modules.materials import (
     process_materials,
     process_edge_materials,
     clear_empty_material_slots,
+    clear_and_set_solder_material,
 )
 
 
@@ -70,7 +73,7 @@ def make_board() -> bpy.types.Object:
         config.svg_path + GBR_EDGE_CUTS + ".svg",
         True,
         0.0,
-        config.pcbscale,
+        config.pcbscale_gerbv,
     )
     if pcb is None:
         return empty_obj
@@ -83,7 +86,7 @@ def make_board() -> bpy.types.Object:
         config.svg_path + GBR_PTH + ".svg",
         False,
         0.2,
-        config.pcbscale,
+        config.pcbscale_gerbv,
     )
 
     npth = prepare_mesh(
@@ -91,7 +94,7 @@ def make_board() -> bpy.types.Object:
         config.svg_path + GBR_NPTH + ".svg",
         False,
         0.2,
-        config.pcbscale,
+        config.pcbscale_gerbv,
     )
 
     offset_to_center = Vector(
@@ -101,6 +104,42 @@ def make_board() -> bpy.types.Object:
             0,
         ]
     )  # type: ignore
+    if config.solder:
+        solder_top = prepare_solder(OUT_F_SOLDER, config.pcbscale_vtracer)
+        if solder_top is not None:
+            solder_top.location[0] -= pcb.dimensions[0] / 2
+            solder_top.location[1] += pcb.dimensions[1] / 2
+            solder_top.location[2] += sum(layer_thickness)
+            solder_top.select_set(True)
+            bpy.context.view_layer.objects.active = solder_top
+            bpy.ops.object.transform_apply()
+
+        solder_bot = prepare_solder(OUT_B_SOLDER, config.pcbscale_vtracer)
+        if solder_bot is not None:
+            bpy.ops.object.select_all(action="DESELECT")
+            solder_bot.location[0] -= pcb.dimensions[0] / 2
+            solder_bot.location[1] += pcb.dimensions[1] / 2
+            solder_bot.select_set(True)
+            bpy.context.view_layer.objects.active = solder_bot
+            bpy.ops.transform.resize(value=(1.0, 1.0, -1.0))
+            bpy.ops.object.transform_apply()
+            solder_bot.select_set(True)
+
+        if solder_top is not None:
+            bpy.context.view_layer.objects.active = solder_top
+            solder_top.select_set(True)
+        if not bpy.context.selected_objects:
+            # both top and bottom solder are empty
+            config.solder = False
+        else:
+            bpy.ops.object.join()
+            solder = bpy.context.selected_objects[0]  # type:ignore
+            solder.name = "Solder"
+            bpy.ops.object.shade_smooth()
+            bpy.ops.object.select_all(action="DESELECT")
+            clear_and_set_solder_material(solder)
+        cu.remove_collection(f"{OUT_F_SOLDER}.svg")
+        cu.remove_collection(f"{OUT_B_SOLDER}.svg")
 
     # move pcb and holes to center; move holes below Z
     pcb.location -= offset_to_center  # type:ignore
@@ -125,14 +164,12 @@ def make_board() -> bpy.types.Object:
 
     # holes boolean diff
     if npth:
-        logger.info("Cutting NPTH holes in board.")
-        logger.warning("This operation may take a while!")
+        logger.info("Cutting NPTH holes in board (may take a while!).")
         boolean_diff(pcb, npth)
     # list of bare pcb edges vertices
     bare_pcb_verts = cu.get_vertices(pcb.data, 4)
     if pth:
-        logger.info("Cutting PTH holes in board.")
-        logger.warning("This operation may take a while!")
+        logger.info("Cutting PTH holes in board (may take a while!).")
         boolean_diff(pcb, pth)
     all_pcb_verts = cu.get_vertices(pcb.data, 4)
     # list of plated pcb edges vertices
@@ -176,6 +213,9 @@ def make_board() -> bpy.types.Object:
             bpy.ops.object.select_all(action="DESELECT")
 
     process_materials(board_col, all_list)
+
+    if config.solder:
+        cu.link_obj_to_collection(solder, board_col)
 
     # board measurements
     logger.info(
@@ -335,6 +375,8 @@ def boolean_diff(obj: bpy.types.Object, tool: bpy.types.Object) -> None:
     bool_modifier.operation = "DIFFERENCE"
     # set tool objects
     bool_modifier.object = tool
+    bool_modifier.use_hole_tolerant = True
+
     # apply the modifier
     bpy.context.view_layer.objects.active = obj
     bpy.ops.object.modifier_apply(modifier=bool_modifier.name)
@@ -369,11 +411,12 @@ def extrude_mesh(obj: bpy.types.Object, height: float) -> None:
         bpy.ops.object.select_all(action="DESELECT")
 
 
-def import_svg(name: str, filepth: str) -> Optional[bpy.types.Object]:
+def import_svg(
+    name: str, filepth: str, scale: float, join: bool = True
+) -> Optional[bpy.types.Object | bpy.types.Collection]:
     """Import curve from SVG vector file."""
     if not path.exists(filepth):
         return None
-    return_obj = None
     svgname = filepth.split("/")[-1]
     bpy.ops.import_curve.svg(filepath=str(filepth))
     for obj in bpy.data.collections[svgname].all_objects:
@@ -383,21 +426,29 @@ def import_svg(name: str, filepth: str) -> Optional[bpy.types.Object]:
     logger.info("Importing SVG from " + svgname + " (curve count: " + str(curve_count) + ")")
     if curve_count != 0:
         bpy.ops.object.convert(target="MESH")
-        bpy.ops.object.join()
-        new_obj = bpy.context.selected_objects[0]  # type:ignore
-        new_obj.name = name
-        return_obj = new_obj
-    return return_obj
+        bpy.ops.transform.resize(value=(scale, scale, scale))  # type: ignore
+        if join:
+            bpy.ops.object.join()
+            new_obj = bpy.context.selected_objects[0]  # type:ignore
+            new_obj.name = name
+
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action="SELECT")
+            bpy.ops.mesh.dissolve_limited()
+            bpy.ops.object.mode_set(mode="OBJECT")
+            return new_obj
+        bpy.ops.collection.create(name=name)
+        return bpy.data.collections[name]
+    return None
 
 
 def prepare_mesh(name: str, svg_path: str, clean: bool, height: float, scale: float) -> Optional[bpy.types.Object]:
     """Prepare mesh from imported curve."""
     bpy.ops.object.select_all(action="DESELECT")
-    obj: bpy.types.Object | None = import_svg(name, svg_path)
-    if obj is not None:
+    obj = import_svg(name, svg_path, scale)
+    if isinstance(obj, bpy.types.Object):
         if clean:
             clean_outline(obj)
-        obj.scale = scale * Vector(obj.scale)  # type: ignore
         obj.select_set(True)
         bpy.context.view_layer.objects.active = obj
         bpy.ops.object.transform_apply(
@@ -415,6 +466,57 @@ def prepare_mesh(name: str, svg_path: str, clean: bool, height: float, scale: fl
         logger.warning("No mesh created for " + name + ".")
         return None
     return obj
+
+
+def solder_single(obj: bpy.types.Object) -> None:
+    """Extrude Solder mesh for single pad."""
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    size = obj.dimensions
+
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.dissolve_limited()
+
+    mindim = size[0] if size[0] < size[1] else size[1]
+    if mindim < 0.4:
+        steps = [(0.07, 0.5)]
+    elif mindim < 0.8:
+        steps = [(0.1, 0.5)]
+    elif mindim < 1.2:
+        steps = [(0.1, 0.8), (0.1, 0.5)]
+    else:
+        steps = [(0.1, 1 - 0.3 / mindim), (0.1, 1 - 0.4 / mindim), (0.19, 0.4)]
+
+    for height, scale in steps:
+        bpy.ops.mesh.extrude_region_move(TRANSFORM_OT_translate={"value": (0, 0, height)})
+        bpy.ops.transform.resize(value=(scale, scale, 1.0))  # type: ignore
+
+    bpy.ops.object.mode_set(mode="OBJECT")
+    bpy.ops.object.select_all(action="DESELECT")
+
+
+def prepare_solder(base_name: str, scale: float) -> Optional[bpy.types.Object]:
+    """Prepare Solder mesh for single board side."""
+    input_file = config.svg_path + base_name + ".svg"
+    bpy.ops.object.select_all(action="DESELECT")
+
+    col = import_svg(base_name, input_file, scale, False)
+    if isinstance(col, bpy.types.Collection):
+        logger.info(f"Generating {base_name} mesh..  (may take a while!)")
+        bpy.ops.object.select_all(action="DESELECT")
+        for obj in col.objects:
+            solder_single(obj)
+
+        for obj in col.objects:
+            obj.select_set(True)
+        bpy.ops.object.join()
+        new_obj = bpy.context.selected_objects[0]  # type:ignore
+        new_obj.name = base_name
+        new_obj.data.name = base_name + "_mesh"
+        logger.info("Mesh for " + base_name + " created.")
+        return new_obj
+    return None
 
 
 def clean_bool_diff_artifacts(pcb: bpy.types.Object) -> None:

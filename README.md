@@ -15,7 +15,7 @@ Currently `gerber2blend` supports Blender 4.1+.
 
 `gerber2blend` depends on the following packages:
 
-* gerbv
+* gerbv (recommended >=2.10)
 * inkscape >= 1.2
 * python3.11, pipx
 

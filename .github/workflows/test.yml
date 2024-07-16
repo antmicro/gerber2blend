@@ -17,10 +17,6 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-        - uses: actions/checkout@v4
-          with:
-            submodules: false
-
         - name: Install dependencies
           run: |
             echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
@@ -28,13 +24,14 @@ jobs:
             apt -qqy install git pip python3-poetry gerbv inkscape python3.11 pipx
             apt -qqy install -t bookworm-backports kicad
 
+        - uses: actions/checkout@v4
+          with:
+            submodules: false
+            fetch-depth: 0
+
         - name: Clone Jetson Orin Baseboard HW repository
           run: |
             git clone --quiet https://github.com/antmicro/jetson-orin-baseboard.git
-
-        - name: Install gerber2blend to venv
-          run: |
-            python3.11 -m pipx install .
 
         - name: Generate Gerber files for HW project
           working-directory: ./jetson-orin-baseboard/
@@ -43,10 +40,12 @@ jobs:
             kicad-cli pcb export gerbers --no-protel-ext -o fab/ jetson-orin-baseboard.kicad_pcb
             kicad-cli pcb export drill --format gerber --excellon-separate-th -o fab/ jetson-orin-baseboard.kicad_pcb
 
-        - name: Generate blend from Gerber files
-          working-directory: ./jetson-orin-baseboard/
+        - name: Install gerber2blend and generate blend from Gerber files
           run: |
-            . ${GITHUB_WORKSPACE}/venv/bin/activate
+            git config --global --add safe.directory ${GITHUB_WORKSPACE}
+            python3.11 -m pipx install .
+            PATH=$PATH:~/.local/bin
+            cd ./jetson-orin-baseboard
             gerber2blend -d
 
         - uses: actions/upload-artifact@v3

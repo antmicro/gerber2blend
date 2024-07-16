@@ -25,6 +25,7 @@ Next, you must generate the fabrication outputs using the EDA of the project.
   - Front/Back Silkscreen
   - Front/Back Mask
   - Front/Back Fabrication (optional)
+  - Front/Back Paste (optional)
   - Inner Copper (optional)
 - Drill Files (PTH/NPTH) (optional)
 
@@ -107,4 +108,5 @@ The resulting PCB model file, `<project-name>.blend`, is saved in `[path to proj
 * `-r` - refreshes the generated board model in `fab/<project-name>.blend` - **use it after implementing changes to input files**.
            Calling it in a project with already existing `gerber2blend` outputs will remove these files and generate new ones.
 * `-c PRESET_NAME` - uses a selected `blendcfg` preset
-* `-d` - enables debug logging.
+* `-d` - enables debug logging
+* `-g` - copies `blendcfg.yaml` file from template into current working directory. This will overwrite the existing config file.  

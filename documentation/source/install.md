@@ -9,6 +9,10 @@ sudo apt-get update
 sudo apt install gerbv inkscape python3.11 python3.11-venv pipx
 ```
 
+```{note}
+`gerbv 2.10` installation is recommended as earlier versions may result in broken Gerber exports.
+```
+
 ## Configure PATH
 
 Before installing, make sure that the directory `/home/[username]/.local/bin` is present in your `PATH`.
@@ -27,7 +31,7 @@ python3.11 -m pipx install 'git+https://github.com/antmicro/gerber2blend.git'
 ```
 
 ```{note}
-installation for developers:
+Installation for developers:
 
     git clone https://github.com/antmicro/gerber2blend.git
     python3.11 -m pipx install --editable .

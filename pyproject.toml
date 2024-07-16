@@ -32,6 +32,7 @@ python = "3.11.*"
 pyyaml = "^6.0.1"
 wand = "^0.6.13"
 bpy = "4.1"
+vtracer = "0.6.11"
 
 [tool.poetry-dynamic-versioning]
 enable = true

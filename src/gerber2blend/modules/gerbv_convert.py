@@ -9,6 +9,7 @@ from multiprocessing import Pool
 from typing import List, Tuple
 from wand.image import Image  # type: ignore
 from wand.color import Color  # type: ignore
+import vtracer  # type: ignore
 import gerber2blend.core.module
 import gerber2blend.core.blendcfg
 import gerber2blend.modules.config as config
@@ -28,6 +29,10 @@ from gerber2blend.modules.config import (
     GBR_B_CU,
     GBR_F_FAB,
     GBR_B_FAB,
+    GBR_F_PASTE,
+    GBR_B_PASTE,
+    OUT_F_SOLDER,
+    OUT_B_SOLDER,
 )
 
 HEX_BLACK = "#000000"
@@ -56,10 +61,11 @@ class GerbConvert(gerber2blend.core.module.Module):
     def execute(self) -> None:
         """Run the module."""
         do_prepare_build_directory()
-        do_convert_gerb_to_svg()
-        do_generate_displacement_map_foundation()
         do_convert_layer_to_png()
+        do_generate_displacement_map_foundation()
         do_crop_pngs()
+        prepare_solder()
+        do_convert_gerb_to_svg()
         do_generate_displacement_maps()
 
 
@@ -96,6 +102,8 @@ def do_prepare_build_directory() -> None:
         "BACK_CU": GBR_B_CU,
         "FRONT_FAB": GBR_F_FAB,
         "BACK_FAB": GBR_B_FAB,
+        "FRONT_PASTE": GBR_F_PASTE,
+        "BACK_PASTE": GBR_B_PASTE,
     }
     # Inputs that are allowed to have many files.
     # For each matching input file, the file will be copied to
@@ -427,7 +435,7 @@ def inkscape_path_union(file_path: str) -> None:
 def get_edge_trim_data() -> List[int]:
     """Calculate trim offset for PNGs."""
     with Image(filename=os.path.join(config.png_path, GBR_EDGE_CUTS + ".png")) as edge_cuts_png:
-        edge_cuts_png.trim()
+        edge_cuts_png.trim(percent_background=0.98)
 
         count_edge = 0
         for i in range(edge_cuts_png.width):
@@ -528,3 +536,43 @@ def prepare_silks(in_file: str, mask: str = "", out_file: str = "") -> None:
         ]
         png.color_matrix(levelize_matrix)
         png.save(filename=config.png_path + out_file + ".png")
+
+
+def prepare_solder() -> None:
+    """Prepare PNG with Solder placements."""
+    if config.solder:
+        logger.info("Generate PNGs with solder placement")
+        prepare_solder_side(GBR_F_CU, GBR_F_MASK, GBR_F_PASTE, OUT_F_SOLDER)
+        prepare_solder_side(GBR_B_CU, GBR_B_MASK, GBR_B_PASTE, OUT_B_SOLDER)
+
+
+def prepare_solder_side(cu: str, mask: str, paste: str, out: str) -> None:
+    """Prepare PNG with Solder placement on single board side."""
+    cu = config.png_path + cu + ".png"
+    mask = config.png_path + mask + ".png"
+    paste = config.png_path + paste + ".png"
+    ofile = config.png_path + out + ".png"
+    ofilesvg = config.svg_path + out + ".svg"
+    if not os.path.exists(paste):
+        return
+
+    with Image(filename=cu) as cu, Image(filename=mask) as mask, Image(filename=paste) as paste:
+        assert type(cu) == Image
+        assert type(paste) == Image
+
+        cu.composite(image=mask, gravity="center", operator="lighten")
+        cu.composite(image=mask, gravity="center", operator="lighten")
+        cu.threshold(0.5)
+
+        cu.negate()
+        paste.negate()
+        for i in range(10):
+            paste.morphology(method="dilate", kernel="disk", iterations=1)
+            paste.composite(image=cu, gravity="center", operator="darken")
+        paste.morphology(method="dilate", kernel="disk:1", iterations=1)
+        paste.negate()
+        paste.threshold(0.1)
+
+        paste.save(filename=ofile)
+
+        vtracer.convert_image_to_svg_py(ofile, ofilesvg, colormode="binary", hierarchical="cutout")

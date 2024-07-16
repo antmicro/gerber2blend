@@ -1,10 +1,13 @@
 """Module responsible for appending and preparing PCB shaders."""
 
 import bpy
+import os
 import math
 import gerber2blend.modules.config as config
 import gerber2blend.modules.custom_utilities as cu
 import gerber2blend.modules.file_io as fio
+from wand.image import Image  # type: ignore
+from wand.color import Color  # type: ignore
 from gerber2blend.modules.config import (
     GBR_F_SILK,
     GBR_B_SILK,
@@ -14,6 +17,8 @@ from gerber2blend.modules.config import (
     GBR_B_CU,
     OUT_F_DISPMAP,
     OUT_B_DISPMAP,
+    OUT_F_SOLDER,
+    OUT_B_SOLDER,
 )
 import logging
 from typing import List, Tuple
@@ -155,15 +160,27 @@ def process_materials(board_col: bpy.types.Collection, in_list: List[str]) -> No
     set_soldermask_color(config.blendcfg["SETTINGS"]["SOLDERMASK"])
     set_silkscreen_color(config.blendcfg["SETTINGS"]["SILKSCREEN"])
 
+    with Color("white") as bg:
+        with Image(width=100, height=100, background=bg) as img:
+            # white image as OUT_*_SOLDER will not introduce changes in texture color
+            fsolder = config.png_path + OUT_F_SOLDER + ".png"
+            if not os.path.exists(fsolder):
+                img.save(filename=fsolder)
+            bsolder = config.png_path + OUT_B_SOLDER + ".png"
+            if not os.path.exists(bsolder):
+                img.save(filename=bsolder)
+
     textures = [
         f"{OUT_F_DISPMAP}.png",
         f"{GBR_F_SILK}.png",
         f"{GBR_F_MASK}.png",
         f"{GBR_F_CU}.png",
+        f"{OUT_F_SOLDER}.png",
         f"{OUT_B_DISPMAP}.png",
         f"{GBR_B_SILK}.png",
         f"{GBR_B_MASK}.png",
         f"{GBR_B_CU}.png",
+        f"{OUT_B_SOLDER}.png",
     ]
 
     layers_materials = ["main_pcb_bot"]
@@ -189,9 +206,17 @@ def process_materials(board_col: bpy.types.Collection, in_list: List[str]) -> No
 
 def clear_empty_material_slots() -> None:
     """Clear empty slots in all objects on scene."""
-    for obj in bpy.data.objects:
+    for obj in bpy.data.collections["Board"].all_objects:
         bpy.context.view_layer.objects.active = obj
         for slot in obj.material_slots:
             if not slot.material:
                 bpy.context.object.active_material_index = slot.slot_index
                 bpy.ops.object.material_slot_remove()
+
+
+def clear_and_set_solder_material(obj: bpy.types.Object) -> None:
+    """Clear all materials and add solder material instead."""
+    obj.data.materials.clear()  # type:ignore
+    material = "Solder"
+    load_materials([material])
+    append_material(obj, material)
