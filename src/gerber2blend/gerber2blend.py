@@ -7,9 +7,9 @@ import logging
 import os
 import pkgutil
 import sys
-from os import path
+from os import getcwd, path
 from typing import Any, Optional
-import gerber2blend.core.blendcfg
+import gerber2blend.core.blendcfg as blendcfg
 import gerber2blend.core.log
 import gerber2blend.core.module
 import gerber2blend.modules.config as config
@@ -151,6 +151,12 @@ def main() -> None:
     """Execute script's main function."""
     args = parse_args()
 
+    if args.get_config:
+        prj_path = getcwd() + "/"
+        g2b_dir_path = path.dirname(__file__)
+        blendcfg.check_and_copy_blendcfg(prj_path, g2b_dir_path, force=True)
+        exit(0)
+
     if args.blend_path and not path.isfile(args.blend_path):
         logger.error(f"Model not found at path: {args.blend_path}")
         exit(1)
@@ -159,8 +165,6 @@ def main() -> None:
     gerber2blend.core.log.set_logging(args.debug)
     try:
         config.init_global(args)
-        if args.get_config:
-            sys.exit(0)
         run_modules_for_config(config.blendcfg)
     except Exception as e:
         logger.error("An error has occured during processing!")

@@ -1,7 +1,7 @@
 """Module responsible for parsing config file."""
 
 import logging
-import os.path
+from os import getcwd, path
 from shutil import copyfile
 from typing import Any, Callable, Dict, Optional
 
@@ -43,10 +43,14 @@ class Field:
         self.optional = optional
 
 
-def check_and_copy_blendcfg(file_path: str, g2b_path: str) -> None:
+def check_and_copy_blendcfg(file_path: str, g2b_path: str, force: bool = False) -> None:
     """Copy blendcfg to project's directory."""
-    if not os.path.exists(file_path + BLENDCFG_FILENAME):
-        logger.warning("Config file not found, copying default template")
+    if not path.exists(file_path + BLENDCFG_FILENAME) or force:
+        if not path.exists(file_path + BLENDCFG_FILENAME):
+            prompt = "no config found in working directory"
+        if force:
+            prompt = "enforced copy"
+        logger.warning(f"Copying default config from template ({prompt})")
         copyfile(g2b_path + "/templates/" + BLENDCFG_FILENAME, file_path + BLENDCFG_FILENAME)
 
 
