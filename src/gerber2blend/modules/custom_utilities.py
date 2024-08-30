@@ -33,7 +33,7 @@ def get_verts_difference(main_set: List[Tuple[float]], remove_set: List[Tuple[fl
     indexes_to_remove = []
     for vert in remove_set:
         _, index, dist = kd.find(vert)
-        if dist < 0.0001:  # points in the same place
+        if dist < 0.0001 and index not in indexes_to_remove:  # points in the same place
             indexes_to_remove.append(index)
 
     for index in sorted(indexes_to_remove, reverse=True):
