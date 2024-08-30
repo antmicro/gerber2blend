@@ -446,8 +446,8 @@ def get_edge_trim_data() -> List[int]:
 
         shave_offset = int(count_edge / 2)
         return [
-            edge_cuts_png.width - 2 * shave_offset,
-            edge_cuts_png.height - 2 * shave_offset,
+            edge_cuts_png.width - count_edge,
+            edge_cuts_png.height - count_edge,
             edge_cuts_png.page_x + shave_offset,
             edge_cuts_png.page_y + shave_offset,
         ]
@@ -470,10 +470,10 @@ def crop_png(file: str, crop_offset: List[int]) -> None:
             return
 
         png.crop(
-            left=crop_offset[2],
-            top=crop_offset[3],
             width=crop_offset[0],
             height=crop_offset[1],
+            left=crop_offset[2],
+            top=crop_offset[3],
         )
         png.save(filename=image_path)
 
