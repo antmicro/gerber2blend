@@ -2,7 +2,7 @@ default: &default
   SETTINGS:
     PRJ_EXTENSION: ".kicad_pro" # file extension used to derive name for generated blend file e.g. example.kicad_pro -> example.blend, type "" if unspecified
     GERBER_DIR: fab # default directory name containing input gerber files
-    DPI: 600 # quality of bitmaps exported from Gerbers, influences board model creation time
+    DPI: 900 # quality of bitmaps exported from Gerbers, influences board model creation time
     DEFAULT_BRD_THICKNESS: 1.6 # used when stackup effect is turned off
     SILKSCREEN: White # options: White (default), Black
     SOLDERMASK:
