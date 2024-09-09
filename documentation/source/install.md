@@ -34,6 +34,7 @@ python3.11 -m pipx install 'git+https://github.com/antmicro/gerber2blend.git'
 Installation for developers:
 
     git clone https://github.com/antmicro/gerber2blend.git
+    cd gerber2blend
     python3.11 -m pipx install --editable .
 
 ```

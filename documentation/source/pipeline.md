@@ -37,6 +37,7 @@ The `execute` method for a stage is called when all previous stages are complete
 
 ## Available stages
 
+- `CLEARSCENE` - clears the default Blender Scene from any objects
 - `GERBCONVERT` - performs conversion of input Gerber files to SVG/PNG. The input files are taken from the `GERBER_FILENAMES` configuration section, and the output is stored in the `fab/PNG` and `fab/SVG` directories.
 - `BOARD` - generates a PCB model from `fab/SVG` and `fab/PNG` input files.
 - `VERSIONSTAMPER` - saves Git commit metadata in the created model (`gerber2blend` and PCB design repository revision)

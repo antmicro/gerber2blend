@@ -3,15 +3,15 @@
 You can customize outputs by editing the `blendcfg.yaml` file which defines rendering options and variants to be generated. 
 The file needs to be placed in the main directory of the hardware project.
 A default `blendcfg.yaml` is copied into the project directory when one does not exist.
-Alternatively it can be copied from the template file using `gerber2blend` with `-g` argument.
+Alternatively you can copy it from the template file using `gerber2blend` with `-g` argument.
 
 The file includes the following config sections:
 
 ### `SETTINGS`
 General board and conversion settings:
 * `PRJ_EXTENSION` - string containing EDA software main project file extension, used to read the PCB project name from it. Can be set to `""` if the extension is undefined. If no files with this extension are found, `unknownpcb` will be used as name. 
-* `FAB_DIR` - string with directory name containing all input Gerber files. Also stackup files and all output temporary files are kept there. Directory can be described as a path relative to project's main direectory. By default `fab` directory is used.
-* `DPI` - resolution of bitmaps measure exported from Gerber files, influences quality of PCB soldermask shaders and board model creation time. Standard value is **600**. 
+* `FAB_DIR` - string with the name of a directory containing all input Gerber files, stackup files, temporary files and a final board model. The directory can be described as a path relative to project's main directory. By default the `fab/` directory is used.
+* `DPI` - target dot density of bitmaps exported from Gerber files; influences quality of PCB soldermask shaders and board model creation time. Standard value is **900**. 
 * `DEFAULT_BRD_THICKNESS` - default board thickness used to generate PCB model when rendering without stackup provided. Default value is **1.6**.
 * `SILKSCREEN` - silkscreen marking color on PCB texture, options: `White` (default), `Black`
 * `SOLDERMASK` - soldermask color on PCB texture, options: `Black` (default), `White`, `Green`, `Blue`, `Red`. To use custom RGB values, input a pair of hex values: `AABBCC, DDEEFF` (colors for areas with and without copper beneath). `gerber2blend` converts provided RGB codes to Blender color space.
@@ -19,11 +19,11 @@ General board and conversion settings:
 
 ### `EFFECTS`
 Enables additional render effects:
-* `STACKUP`- generates separate models for each layer of the PCB, requires `stackup.json` to be provided in the `fab/` directory. This file format is specified in the [Getting started secton](quickstart.md#stackup-format).
+* `STACKUP`- generates separate models for each copper layer of the PCB, requires `stackup.json` to be provided in the `fab/` directory. This file format is specified in the [Getting started section](quickstart.md#stackup-format).
 * `SOLDER`- generates solder on pads of mounted components, requires solder paste gerbers to be provided in the `fab/` directory.
 
 ```{note}
-To properly generate on all pads when using `SOLDER` effect, ensure that solder paste is exported on THT ones as well when exporting Gerber files (this may not be the default behavior of yours ECAD exporter).
+To ensure correct application of the SOLDER effect on pads when exporting Gerber files, make sure that solder paste is also included on THT pads (as this might not be the default setting in your ECAD software). Additionally, ensure that solder paste is not exported for DNP components or for non-pad areas with exposed copper.
 ```
 
 ### `GERBER_FILENAMES`
@@ -65,3 +65,26 @@ STAGES:
 ```
 
 For description on how stage names from `blendcfg.yaml` are translated to Python modules for execution, see the [Processing pipeline](pipeline.md) chapter.
+
+## Custom config settings
+
+`gerber2blend` can run with a specified configuration preset by typing `gerber2blend -c custom_preset` as mentioned in [usage chapter](usage.md#additional-cli-arguments). The current template file contains a single, default preset. You can add a new preset and save it in the `blendcfg.yaml` template file as follows:
+
+```yaml
+default: &default
+    SETTINGS:
+        FAB_DIR: fab
+        DPI: 900
+        PRJ_EXTENSION: .kicad_pro
+        ...
+
+custom_preset:
+    <<: *default
+    SETTINGS:
+        FAB_DIR: fabrication_dir
+        DPI: 1200
+        PRJ_EXTENSION: .kicad_pro
+        ...
+```
+
+In `blendcfg.yaml presets`, only the fields that are modified need to be included in a new preset. The remaining values are inherited from the default preset through mapping merges.

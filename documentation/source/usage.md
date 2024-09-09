@@ -35,7 +35,8 @@ The default configuration supports KiCad7 filenames for the fab files out of the
 
 ### Stackup format
 
-`gerber2blend` needs a stackup JSON file containing data about layers defined in the PCB design. An example 4-layer `stackup.json` file looks as follows:
+`gerber2blend` needs a stackup JSON file containing data about layers defined in the PCB design. `gerber2blend` expects the stackup file to be in the `FAB_DIR` path.
+An example 4-layer `stackup.json` file looks as follows:
 
 ```
 {
@@ -106,7 +107,7 @@ The resulting PCB model file, `<project-name>.blend`, is saved in `[path to proj
 
 `gerber2blend` supports the following command arguments:
 * `-r` - refreshes the generated board model in `fab/<project-name>.blend` - **use it after implementing changes to input files**.
-           Calling it in a project with already existing `gerber2blend` outputs will remove these files and generate new ones.
-* `-c PRESET_NAME` - uses a selected `blendcfg` preset
+           Calling it in a project where `gerber2blend` outputs already exist, will remove these files and generate new ones.
+* `-c PRESET_NAME` - uses a selected `blendcfg` preset (see: [Custom config settings](blendcfg.md#custom-config-settings))
 * `-d` - enables debug logging
 * `-g` - copies `blendcfg.yaml` file from template into current working directory. This will overwrite the existing config file.  

@@ -12,7 +12,7 @@ git clone https://github.com/antmicro/jetson-orin-baseboard.git
 
 ### Install KiCad
 
-Open Source EDA tool [KiCad](https://www.kicad.org/) will be used for generation of the `Geber` format files for the board.
+Open Source EDA tool [KiCad](https://www.kicad.org/) will be used for generation of the `Gerber` format files for the board.
 KiCad from version 7.0.0 provides CLI that can be used in the command line and CI environment.
 To install KiCad run:
 ```
@@ -39,7 +39,7 @@ gerbview fab/*
 
 ### Generate PCB model using `gerber2blend`
 
-To generate 3D model run:
+To generate a 3D model of the board, run:
 ```
 cd jetson-orin-baseboard
 gerber2blend
