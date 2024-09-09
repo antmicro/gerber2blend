@@ -60,6 +60,7 @@ pcbthickness: float = 0.0
 pcbscale_gerbv: float = 0.0
 pcbscale_vtracer: float = 0.0
 solder: bool = True
+board_created = False
 
 
 def init_global(arguments: argparse.Namespace) -> None:

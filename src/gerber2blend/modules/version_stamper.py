@@ -17,7 +17,12 @@ class VersionStamper(gerber2blend.core.module.Module):
 
     def execute(self) -> None:
         """Run the module."""
-        logger.info("Stamping the generated board with revisions..")
+        # stamp only if board was created in current run
+        if cfg.board_created is not True:
+            logger.info("Board model was not modified in this run.")
+            logger.info("Exiting VersionStamper module. ")
+            return
+        logger.info("Stamping the generated board with commit revisions.")
 
         g2b_version = importlib.metadata.metadata("gerber2blend")["Version"]
         set_custom_property("G2B_VERSION", g2b_version)

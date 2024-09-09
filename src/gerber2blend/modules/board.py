@@ -40,14 +40,12 @@ class Board(gerber2blend.core.module.Module):
     def execute(self) -> None:
         """Execute Board module."""
         if path.isfile(config.pcb_blend_path) and not config.args.regenerate:
-            logger.info(
-                f"Board model already exists at {config.pcb_blend_path}. "
-                "Not regenerating, as -r option was not specified"
-            )
+            logger.info(f"Board model already exists at {config.pcb_blend_path}. ")
+            logger.info("Exiting Board module. Run with -r to regenerate the model.")
             return
-
         logger.info("Generating new PCB mesh.")
         make_board()
+        config.board_created = True
         cu.save_pcb_blend(config.pcb_blend_path, apply_transforms=True)
 
 
@@ -503,7 +501,7 @@ def prepare_solder(base_name: str, scale: float) -> Optional[bpy.types.Object]:
 
     col = import_svg(base_name, input_file, scale, False)
     if isinstance(col, bpy.types.Collection):
-        logger.info(f"Generating {base_name} mesh..  (may take a while!)")
+        logger.info(f"Generating {base_name} mesh (may take a while!).")
         bpy.ops.object.select_all(action="DESELECT")
         for obj in col.objects:
             solder_single(obj)
