@@ -1,0 +1,89 @@
+stages:
+  - code-checks
+  - test
+  - build
+  - deploy
+
+image: $CI_DOCS_DOCKER_IMAGE
+
+type-correctness:
+  stage: code-checks
+  image: 'debian:bookworm'
+  allow_failure: true
+  script:
+    - apt update && apt -qqy install pip python3-poetry python3.11
+    - poetry add mypy fake-bpy-module-4.1
+    - poetry install
+    - poetry run mypy --install-types --non-interactive --disallow-untyped-defs src/
+
+code-formatting:
+  stage: code-checks
+  image: 'debian:bookworm'
+  allow_failure: true
+  script:
+    - apt update && apt -qqy install pip python3-poetry python3.11
+    - poetry add black
+    - poetry install
+    - poetry run black --check src/
+
+test:
+  stage: test
+  image: 'debian:bookworm'
+  before_script:
+    - export PATH=$HOME/.local/bin:$PATH
+    - mkdir -p logs
+    - echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
+    - apt-get -qqy update >> logs/debian_install.log
+    - apt-get -qqy update --fix-missing >> logs/debian_install.log
+    - apt update && apt -qqy install git pip python3-poetry gerbv inkscape python3.11 pipx >> logs/debian_install.log
+    - apt-get -qqy install -t bookworm-backports kicad >> logs/debian_install.log
+    - git clone --quiet https://github.com/antmicro/jetson-orin-baseboard.git
+
+  script:
+    - export PATH=$HOME/.local/bin:$PATH
+    - python3.11 -m pipx install .
+    - cd jetson-orin-baseboard
+    - mkdir fab
+    - kicad-cli pcb export gerbers --no-protel-ext -o fab/ jetson-orin-baseboard.kicad_pcb
+    - kicad-cli pcb export drill --format gerber --excellon-separate-th -o fab/ jetson-orin-baseboard.kicad_pcb
+    - gerber2blend
+  artifacts:
+    paths:
+      - jetson-orin-baseboard/assets
+      - jetson-orin-baseboard/doc
+      - jetson-orin-baseboard/img
+      - jetson-orin-baseboard/fab
+      - jetson-orin-baseboard/*.kicad*
+      - jetson-orin-baseboard/sym-lib-table
+      - jetson-orin-baseboard/fp-lib-table
+      - jetson-orin-baseboard/README.md
+      - jetson-orin-baseboard/LICENSE
+      - jetson-orin-baseboard/blendcfg.yaml
+
+docs-build:
+  stage: build
+  before_script:
+    - cd documentation/
+    - pip3 install -r requirements.txt
+    - pip3 install sphinxcontrib-mermaid
+  script:
+    - cd documentation/
+    - make html latexpdf
+    - cp build/latex/*.pdf build/html/
+    - tar cf ../$CI_DOCS_ARCHIVE -C build/html/ .
+  artifacts:
+    paths:
+      - build
+      - $CI_DOCS_ARCHIVE
+
+docs-deploy:
+  variables:
+    GIT_STRATEGY: none
+  dependencies:
+    - docs-build
+  stage: deploy
+  tags: ['docs']
+  script: echo 'Deploying docs'
+  artifacts:
+    paths:
+      - $CI_DOCS_ARCHIVE
