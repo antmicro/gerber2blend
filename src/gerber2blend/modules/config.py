@@ -111,10 +111,10 @@ def configure_paths(arguments: argparse.Namespace) -> None:
     global PCB_name
     global prj_path
 
-    fab_path = prj_path + blendcfg["SETTINGS"]["GERBER_DIR"] + "/"
+    fab_path = prj_path + blendcfg["SETTINGS"]["FAB_DIR"] + "/"
     if not os.path.isdir(fab_path):
         raise RuntimeError(
-            f"There is no {blendcfg['SETTINGS']['GERBER_DIR']}/ directory in the current working directory! ({prj_path})"
+            f"There is no {blendcfg['SETTINGS']['FAB_DIR']}/ directory in the current working directory! ({prj_path})"
         )
 
     # Determine the name of the PCB to use as a name for the .blend

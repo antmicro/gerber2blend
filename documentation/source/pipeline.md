@@ -8,6 +8,7 @@ The following board generation pipeline is created by default:
     - CLEARSCENE:
     - GERBCONVERT:
     - BOARD:
+    - VERSIONSTAMPER:
 ```
 
 Each stage in the pipeline is provided from the `modules` package in the Blender Python environment.
@@ -38,3 +39,4 @@ The `execute` method for a stage is called when all previous stages are complete
 
 - `GERBCONVERT` - performs conversion of input Gerber files to SVG/PNG. The input files are taken from the `GERBER_FILENAMES` configuration section, and the output is stored in the `fab/PNG` and `fab/SVG` directories.
 - `BOARD` - generates a PCB model from `fab/SVG` and `fab/PNG` input files.
+- `VERSIONSTAMPER` - saves Git commit metadata in the created model (`gerber2blend` and PCB design repository revision)

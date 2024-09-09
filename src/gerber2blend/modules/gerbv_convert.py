@@ -118,7 +118,7 @@ def do_prepare_build_directory() -> None:
     # Check all of the filenames specified in "GERBER_FILENAMES" and
     # move them to the build directory under the above specified names.
     gerbers_missing = False
-    gbr_dir = config.blendcfg["SETTINGS"]["GERBER_DIR"]
+    gbr_dir = config.blendcfg["SETTINGS"]["FAB_DIR"]
     for k, v in config.blendcfg["GERBER_FILENAMES"].items():
         if v is None:
             # Only makes sense to do this with singular gerber files
