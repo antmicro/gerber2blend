@@ -1,9 +1,11 @@
 """Module responsible for GBR to SVG and PNG conversion."""
 
 import os
+import re
 import shutil
 import logging
 import glob
+from pathlib import Path
 from functools import partial
 from multiprocessing import Pool
 from typing import List, Tuple
@@ -402,6 +404,11 @@ def gbr_to_svg_convert(file_name: str) -> None:
     rc = os.system(gerbv_command)
     if rc != 0:
         raise RuntimeError(f"Failed to convert Gerbers to SVG: gerbv returned exit code {rc}")
+
+    # patch for gerbv<2.10.1 & cairo > 1.17.6
+    original_svg = Path(svg_file_path).read_text()
+    svg_w_units = re.sub(r'width="(\d*)" height="(\d*)"', r'width="\1pt" height="\2pt"', original_svg)
+    Path(svg_file_path).write_text(svg_w_units)
 
 
 def correct_frame_in_svg(data: str, frame: str) -> None:
