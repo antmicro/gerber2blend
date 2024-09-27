@@ -138,6 +138,8 @@ def make_board() -> bpy.types.Object:
             clear_and_set_solder_material(solder)
         cu.remove_collection(f"{OUT_F_SOLDER}.svg")
         cu.remove_collection(f"{OUT_B_SOLDER}.svg")
+        for obj in bpy.context.scene.objects:
+            cu.apply_all_transform_obj(obj)
 
     # move pcb and holes to center; move holes below Z
     pcb.location -= offset_to_center  # type:ignore
@@ -385,6 +387,25 @@ def boolean_diff(obj: bpy.types.Object, tool: bpy.types.Object) -> None:
     clean_bool_diff_artifacts(obj)
 
 
+def boolean_intersect(obj: bpy.types.Object, tool: bpy.types.Object) -> None:
+    """Apply boolean intersect modifier on object and remove the tool afterwards."""
+    # define boolean operation
+    bpy.ops.object.select_all(action="DESELECT")
+    bool_modifier = obj.modifiers.new(name="intersect", type="BOOLEAN")
+    assert isinstance(bool_modifier, bpy.types.BooleanModifier)
+    bool_modifier.operation = "INTERSECT"
+    # set tool objects
+    bool_modifier.object = tool
+    # apply the modifier
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.modifier_apply(modifier=bool_modifier.name)
+    # delete tool object
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.data.objects[tool.name].select_set(True)
+    bpy.ops.object.delete()
+    bpy.ops.object.select_all(action="DESELECT")
+
+
 def clean_outline(mesh: bpy.types.Object) -> None:
     """Import outline from edgecuts."""
     bpy.context.view_layer.objects.active = mesh
@@ -417,7 +438,8 @@ def import_svg(
         return None
     svgname = filepth.split("/")[-1]
     bpy.ops.import_curve.svg(filepath=str(filepth))
-    for obj in bpy.data.collections[svgname].all_objects:
+    col = bpy.data.collections[svgname]
+    for obj in col.all_objects:
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
     curve_count = len(bpy.context.selected_objects)  # type:ignore
@@ -435,8 +457,8 @@ def import_svg(
             bpy.ops.mesh.dissolve_limited()
             bpy.ops.object.mode_set(mode="OBJECT")
             return new_obj
-        bpy.ops.collection.create(name=name)
-        return bpy.data.collections[name]
+        col.name = name
+        return col
     return None
 
 
@@ -474,6 +496,7 @@ def solder_single(obj: bpy.types.Object) -> None:
 
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.fill_holes(sides=0)
     bpy.ops.mesh.dissolve_limited()
 
     mindim = size[0] if size[0] < size[1] else size[1]
@@ -497,6 +520,7 @@ def solder_single(obj: bpy.types.Object) -> None:
 def prepare_solder(base_name: str, scale: float) -> Optional[bpy.types.Object]:
     """Prepare Solder mesh for single board side."""
     input_file = config.svg_path + base_name + ".svg"
+    input_file_fixer = config.svg_path + base_name + "_fixer.svg"
     bpy.ops.object.select_all(action="DESELECT")
 
     col = import_svg(base_name, input_file, scale, False)
@@ -513,6 +537,11 @@ def prepare_solder(base_name: str, scale: float) -> Optional[bpy.types.Object]:
         new_obj.name = base_name
         new_obj.data.name = base_name + "_mesh"
         logger.info("Mesh for " + base_name + " created.")
+        fixer = prepare_mesh(base_name + "_fixer", input_file_fixer, False, 1, scale)
+        if fixer is not None:
+            fixer.location[2] -= 0.2
+            boolean_intersect(new_obj, fixer)
+            logger.info("Excessive soldering corrected")
         return new_obj
     return None
 

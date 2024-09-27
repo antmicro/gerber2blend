@@ -559,7 +559,9 @@ def prepare_solder_side(cu: str, mask: str, paste: str, out: str) -> None:
     mask = config.png_path + mask + ".png"
     paste = config.png_path + paste + ".png"
     ofile = config.png_path + out + ".png"
-    ofilesvg = config.svg_path + out + ".svg"
+    ofile_fixer = config.png_path + out + "_fixer.png"
+    ofile_svg = config.svg_path + out + ".svg"
+    ofile_fixer_svg = config.svg_path + out + "_fixer.svg"
     if not os.path.exists(paste):
         return
 
@@ -573,13 +575,21 @@ def prepare_solder_side(cu: str, mask: str, paste: str, out: str) -> None:
 
         cu.negate()
         paste.negate()
+        paste2 = paste.clone()
+        paste2.morphology(method="dilate", kernel="disk:30", iterations=1)
+        paste2.morphology(method="erode", kernel="disk:28", iterations=1)
         for i in range(10):
             paste.morphology(method="dilate", kernel="disk", iterations=1)
             paste.composite(image=cu, gravity="center", operator="darken")
+        paste.composite(image=paste2, gravity="center", operator="darken")
         paste.morphology(method="dilate", kernel="disk:1", iterations=1)
         paste.negate()
         paste.threshold(0.1)
 
         paste.save(filename=ofile)
 
-        vtracer.convert_image_to_svg_py(ofile, ofilesvg, colormode="binary", hierarchical="cutout")
+        paste.morphology(method="erode", kernel="disk:2", iterations=1)
+        paste.save(filename=ofile_fixer)
+
+        vtracer.convert_image_to_svg_py(ofile, ofile_svg, colormode="binary", hierarchical="cutout")
+        vtracer.convert_image_to_svg_py(ofile_fixer, ofile_fixer_svg, colormode="binary", hierarchical="cutout")
