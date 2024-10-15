@@ -12,7 +12,7 @@ type-correctness:
   allow_failure: true
   script:
     - apt update && apt -qqy install pip python3-poetry python3.11
-    - poetry add mypy fake-bpy-module-4.1
+    - poetry add mypy fake-bpy-module-4.1==20240604
     - poetry install
     - poetry run mypy --install-types --non-interactive --disallow-untyped-defs src/
 
