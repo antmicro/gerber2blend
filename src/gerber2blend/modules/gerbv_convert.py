@@ -332,12 +332,12 @@ def gbr_png_convert(data: Tuple[str, str, str, str]) -> None:
     fg = "--foreground"
     # All data are present in gerbv convert function to ensure the same size of all converted PNGs
     rc = os.system(
-        f"gerbv {in_gbr_file_path} --background={bg_color} {fg}={fg_color} \
-        {gbr_path}{GBR_F_MASK}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_MASK}.gbr {fg}={HEX_BLACK_ALPHA} \
-        {gbr_path}{GBR_F_FAB}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_FAB}.gbr {fg}={HEX_BLACK_ALPHA} \
-        {gbr_path}{GBR_F_SILK}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_SILK}.gbr {fg}={HEX_BLACK_ALPHA} \
-        {gbr_path}{GBR_EDGE_CUTS}.gbr {fg}={HEX_BLACK_ALPHA} \
-        -o {png_path} --dpi={config.blendcfg['SETTINGS']['DPI']} -a --export=png 2>/dev/null"
+        f"gerbv '{in_gbr_file_path}' --background={bg_color} {fg}={fg_color} \
+        '{gbr_path}{GBR_F_MASK}.gbr' {fg}={HEX_BLACK_ALPHA} '{gbr_path}{GBR_B_MASK}.gbr' {fg}={HEX_BLACK_ALPHA} \
+        '{gbr_path}{GBR_F_FAB}.gbr' {fg}={HEX_BLACK_ALPHA} '{gbr_path}{GBR_B_FAB}.gbr' {fg}={HEX_BLACK_ALPHA} \
+        '{gbr_path}{GBR_F_SILK}.gbr' {fg}={HEX_BLACK_ALPHA} '{gbr_path}{GBR_B_SILK}.gbr' {fg}={HEX_BLACK_ALPHA} \
+        '{gbr_path}{GBR_EDGE_CUTS}.gbr' {fg}={HEX_BLACK_ALPHA} \
+        -o '{png_path}' --dpi={config.blendcfg['SETTINGS']['DPI']} -a --export=png 2>/dev/null"
     )
     if rc != 0:
         raise RuntimeError(f"Failed to convert Gerbers to PNG: gerbv returned exit code {rc}")
@@ -350,14 +350,14 @@ def generate_displacement_map_png(filename: str) -> None:
     side = filename[0]  # first letter from png name
     fg = "--foreground"
     rc = os.system(
-        f"gerbv {gbr_path}{GBR_PTH}.gbr --background=#555555 {fg}=#000000ff \
-        {gbr_path}{GBR_NPTH}.gbr {fg}=#000000ff \
-        {gbr_path}{side}_Cu.gbr {fg}=#808080ff \
-        {gbr_path}{GBR_F_MASK}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_MASK}.gbr {fg}={HEX_BLACK_ALPHA} \
-        {gbr_path}{GBR_F_FAB}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_FAB}.gbr {fg}={HEX_BLACK_ALPHA} \
-        {gbr_path}{GBR_F_SILK}.gbr {fg}={HEX_BLACK_ALPHA} {gbr_path}{GBR_B_SILK}.gbr {fg}={HEX_BLACK_ALPHA} \
-        {gbr_path}{GBR_EDGE_CUTS}.gbr {fg}={HEX_BLACK_ALPHA} \
-        -o {png_path} -a --dpi={config.blendcfg['SETTINGS']['DPI']} --export=png 2> /dev/null"
+        f"gerbv '{gbr_path}{GBR_PTH}.gbr' --background=#555555 {fg}=#000000ff \
+        '{gbr_path}{GBR_NPTH}.gbr' {fg}=#000000ff \
+        '{gbr_path}{side}_Cu.gbr' {fg}=#808080ff \
+        '{gbr_path}{GBR_F_MASK}.gbr' {fg}={HEX_BLACK_ALPHA} '{gbr_path}{GBR_B_MASK}.gbr' {fg}={HEX_BLACK_ALPHA} \
+        '{gbr_path}{GBR_F_FAB}.gbr' {fg}={HEX_BLACK_ALPHA} '{gbr_path}{GBR_B_FAB}.gbr' {fg}={HEX_BLACK_ALPHA} \
+        '{gbr_path}{GBR_F_SILK}.gbr' {fg}={HEX_BLACK_ALPHA} '{gbr_path}{GBR_B_SILK}.gbr' {fg}={HEX_BLACK_ALPHA} \
+        '{gbr_path}{GBR_EDGE_CUTS}.gbr' {fg}={HEX_BLACK_ALPHA} \
+        -o '{png_path}' -a --dpi={config.blendcfg['SETTINGS']['DPI']} --export=png 2> /dev/null"
     )
     if rc != 0:
         raise RuntimeError(f"Failed to generate displacement map: gerbv returned exit code {rc}")
@@ -398,9 +398,9 @@ def gbr_to_svg_convert(file_name: str) -> None:
     if not os.path.isfile(gbr_file_path):
         raise RuntimeError(f"Gerber file {gbr_file_path} does not exist!")
 
-    gerbv_command = f"gerbv {gbr_file_path} --foreground={HEX_BLACK} \
-    {gbr_path}{GBR_EDGE_CUTS}.gbr --foreground={HEX_WHITE} \
-    -o {svg_file_path} --export=svg 2>/dev/null"
+    gerbv_command = f"gerbv '{gbr_file_path}' --foreground={HEX_BLACK} \
+    '{gbr_path}{GBR_EDGE_CUTS}.gbr' --foreground={HEX_WHITE} \
+    -o '{svg_file_path}' --export=svg 2>/dev/null"
     rc = os.system(gerbv_command)
     if rc != 0:
         raise RuntimeError(f"Failed to convert Gerbers to SVG: gerbv returned exit code {rc}")
@@ -433,7 +433,7 @@ def inkscape_path_union(file_path: str) -> None:
     if not os.path.exists(file_path):
         return
     inkscape_actions = "select-all;object-stroke-to-path;path-union;"
-    rc = os.system(f'inkscape --actions="{inkscape_actions}export-filename:{file_path};export-do" {file_path}')
+    rc = os.system(f'inkscape --actions="{inkscape_actions}export-filename:{file_path};export-do" "{file_path}"')
 
     if rc != 0:
         raise RuntimeError(f"Failed to generate path union: inkscape returned exit code {rc}")
