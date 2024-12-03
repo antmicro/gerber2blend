@@ -1,6 +1,6 @@
 # gerber2blend
 
-Copyright (c) 2022-2024 Antmicro
+Copyright (c) 2022-2024 [Antmicro](https://www.antmicro.com)
 
 ![](img/gerber2blend-vis.png)
 
