@@ -4,7 +4,7 @@ Copyright (c) 2022-2024 [Antmicro](https://www.antmicro.com)
 
 ![](img/gerber2blend-vis.png)
 
-`gerber2blend` is an open-source utility dedicated to generating 3D models of Printed Circuit Boards (PCBs) in Blender (.blend) format.
+This is an open-source utility dedicated to generating 3D models of Printed Circuit Boards (PCBs) in Blender (.blend) format.
 The tool uses Gerber (Gerber RS-274X) input files that are used for producing physical PCBs.
 This makes the PCB visualization independent from the software used for designing it.
 Currently `gerber2blend` supports Blender 4.1+.
@@ -54,6 +54,6 @@ gerber2blend --help
 
 For more information regarding Blender supported by the `gerber2blend` visit the [Blender 4.1 documentation](https://docs.blender.org/manual/en/4.1/).
 
-## License
+## Licensing
 
 The `gerber2blend` utility is licensed under the Apache-2.0 [license](LICENSE).
