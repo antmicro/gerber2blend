@@ -1,5 +1,5 @@
 myst-parser
-sphinx
+sphinx~=7.2.0
 sphinx_tabs
 sphinx-inline-tabs
 
