@@ -1,7 +1,8 @@
 """Module responsible for parsing config file."""
 
+import hiyapyco  # type: ignore
 import logging
-from os import getcwd, path
+from os import path
 from shutil import copyfile
 from typing import Any, Callable, Dict, Optional
 
@@ -46,12 +47,17 @@ class Field:
 def check_and_copy_blendcfg(file_path: str, g2b_path: str, force: bool = False) -> None:
     """Copy blendcfg to project's directory."""
     if not path.exists(file_path + BLENDCFG_FILENAME) or force:
+        template_cfg = f"{g2b_path}/templates/{BLENDCFG_FILENAME}"
+        project_cfg = file_path + BLENDCFG_FILENAME
         if not path.exists(file_path + BLENDCFG_FILENAME):
             prompt = "no config found in working directory"
-        if force:
-            prompt = "enforced copy"
-        logger.warning(f"Copying default config from template ({prompt})")
-        copyfile(g2b_path + "/templates/" + BLENDCFG_FILENAME, file_path + BLENDCFG_FILENAME)
+            copyfile(template_cfg, project_cfg)
+        elif force:
+            prompt = "overwrite existing config"
+            cfg = hiyapyco.load([project_cfg, template_cfg], method=hiyapyco.METHOD_MERGE)
+            with open(project_cfg, "w") as file:
+                yaml.dump(cfg, file)
+        logger.warning(f"Copied default config from template ({prompt})")
 
 
 def is_color(arg: str | None) -> bool:
