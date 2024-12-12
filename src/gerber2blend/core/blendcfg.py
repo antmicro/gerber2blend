@@ -46,10 +46,10 @@ class Field:
 
 def check_and_copy_blendcfg(file_path: str, g2b_path: str, force: bool = False) -> None:
     """Copy blendcfg to project's directory."""
-    if not path.exists(file_path + BLENDCFG_FILENAME) or force:
-        template_cfg = f"{g2b_path}/templates/{BLENDCFG_FILENAME}"
-        project_cfg = file_path + BLENDCFG_FILENAME
-        if not path.exists(file_path + BLENDCFG_FILENAME):
+    template_cfg = f"{g2b_path}/templates/{BLENDCFG_FILENAME}"
+    project_cfg = file_path + BLENDCFG_FILENAME
+    if not path.exists(project_cfg) or force:
+        if not path.exists(project_cfg):
             prompt = "no config found in working directory"
             copyfile(template_cfg, project_cfg)
         elif force:

@@ -149,7 +149,9 @@ def run_modules_for_config(conf: dict[Any, Any]) -> None:
 
 def main() -> None:
     """Execute script's main function."""
+    # Configure logger based on if we're debugging or not
     args = parse_args()
+    gerber2blend.core.log.set_logging(args.debug)
 
     if args.get_config:
         prj_path = getcwd() + "/"
@@ -161,8 +163,6 @@ def main() -> None:
         logger.error(f"Model not found at path: {args.blend_path}")
         exit(1)
 
-    # Configure logger based on if we're debugging or not
-    gerber2blend.core.log.set_logging(args.debug)
     try:
         config.init_global(args)
         run_modules_for_config(config.blendcfg)
