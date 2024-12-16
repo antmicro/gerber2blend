@@ -48,16 +48,19 @@ def check_and_copy_blendcfg(file_path: str, g2b_path: str, force: bool = False) 
     """Copy blendcfg to project's directory."""
     template_cfg = f"{g2b_path}/templates/{BLENDCFG_FILENAME}"
     project_cfg = file_path + BLENDCFG_FILENAME
-    if not path.exists(project_cfg) or force:
-        if not path.exists(project_cfg):
-            prompt = "no config found in working directory"
-            copyfile(template_cfg, project_cfg)
-        elif force:
+    if not path.exists(project_cfg):
+        prompt = "no config found in working directory"
+        copyfile(template_cfg, project_cfg)
+    else:
+        if force:
             prompt = "overwrite existing config"
             cfg = hiyapyco.load([project_cfg, template_cfg], method=hiyapyco.METHOD_MERGE)
-            with open(project_cfg, "w") as file:
-                yaml.dump(cfg, file)
-        logger.warning(f"Copied default config from template ({prompt})")
+        else:
+            prompt = "append to existing config"
+            cfg = hiyapyco.load([template_cfg, project_cfg], method=hiyapyco.METHOD_MERGE)
+        with open(project_cfg, "w") as file:
+            yaml.dump(cfg, file)
+    logger.warning(f"Copied default config from template ({prompt})")
 
 
 def is_color(arg: str | None) -> bool:
