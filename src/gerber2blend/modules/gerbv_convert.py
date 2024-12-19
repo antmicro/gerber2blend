@@ -16,6 +16,7 @@ import gerber2blend.core.module
 import gerber2blend.core.blendcfg
 import gerber2blend.modules.config as config
 import gerber2blend.modules.file_io as fio
+import gerber2blend.modules.stackup as stackup
 from gerber2blend.modules.config import (
     GBR_IN,
     GBR_PTH,
@@ -149,10 +150,25 @@ def do_prepare_build_directory() -> None:
         # Handle inputs with many files
         if k in gerbs_with_many_files:
             # Sort the filelist, as glob.glob() does not guarantee a sorted output
-            matches = sorted(
-                matches,
-                key=lambda x: int(x.split("/")[-1].split("-In")[-1].replace("_Cu.gbr", "")),
-            )
+            user_layer_names = stackup.get().stackup_data
+            if not user_layer_names:
+                logger.info("No stackup file found.")
+                try:
+                    matches = sorted(
+                        matches,
+                        key=lambda x: int(x.split("/")[-1].split("-In")[-1].replace("_Cu.gbr", "")),
+                    )
+                except:
+                    logger.warning("Inner layers don't use default readable naming scheme. Sorting alphabetically.")
+                    logger.info("To ensure order of inner layers, please supply a stackup file.")
+                    matches = sorted(matches)
+            else:
+                matches = sorted(
+                    matches,
+                    key=lambda x: int(
+                        next(name[0].replace("In", "").split(".Cu")[0] for name in user_layer_names if name[2] in x)
+                    ),
+                )
             if len(matches) == 0:
                 logger.error(
                     "Could not find required Gerber %s with pattern: %s in %s/ directory!",

@@ -14,8 +14,8 @@ logger = logging.getLogger()
 class StackupInfo:
     """Stackup information."""
 
-    stackup_data: List[Tuple[str, float]] = []
-    """ Contains layer name <-> layer thickness mappings
+    stackup_data: List[Tuple[str, float, str]] = []
+    """ Contains layer name <-> layer thickness <-> user layer name mappings
 
     If no stackup.json is provided, this will be empty.
     """
@@ -58,7 +58,7 @@ def _load_stackup_from_file() -> StackupInfo:
 
 
 @functools.cache
-def _parse_stackup_from_file(file_path: str) -> Tuple[float, List[Tuple[str, float]]]:
+def _parse_stackup_from_file(file_path: str) -> Tuple[float, List[Tuple[str, float, str]]]:
     """Parse the stackup data from the given JSON file.
 
     Returns
@@ -78,7 +78,9 @@ def _parse_stackup_from_file(file_path: str) -> Tuple[float, List[Tuple[str, flo
             with open(file_path) as stackup_json_file:
                 stackup_json_data = json.load(stackup_json_file)
 
-            stackup_data = [(layer["name"], layer["thickness"]) for layer in stackup_json_data["layers"]]
+            stackup_data = [
+                (layer["name"], layer["thickness"], layer["user-name"]) for layer in stackup_json_data["layers"]
+            ]
             calculated_thickness = 0.0
             for layer in stackup_json_data["layers"]:
                 if layer["thickness"] is not None:
