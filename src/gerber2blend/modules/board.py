@@ -467,8 +467,6 @@ def prepare_mesh(name: str, svg_path: str, clean: bool, height: float, scale: fl
     bpy.ops.object.select_all(action="DESELECT")
     obj = import_svg(name, svg_path, scale)
     if isinstance(obj, bpy.types.Object):
-        if clean:
-            clean_outline(obj)
         obj.select_set(True)
         bpy.context.view_layer.objects.active = obj
         bpy.ops.object.transform_apply(
@@ -479,6 +477,8 @@ def prepare_mesh(name: str, svg_path: str, clean: bool, height: float, scale: fl
             isolate_users=False,
         )
         obj.select_set(False)
+        if clean:
+            clean_outline(obj)
         extrude_mesh(obj, height)
         obj.data.name = name + "_mesh"
         logger.info("Mesh for " + name + " created.")
