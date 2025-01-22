@@ -1,30 +1,7 @@
-stages:
-  - code-checks
-  - test
-  - build
-  - deploy
-
-image: $CI_DOCS_DOCKER_IMAGE
-
-type-correctness:
-  stage: code-checks
-  image: 'debian:bookworm'
-  allow_failure: true
-  script:
-    - apt update && apt -qqy install pip python3-poetry python3.11
-    - poetry add mypy fake-bpy-module-4.1==20240604
-    - poetry install
-    - poetry run mypy --install-types --non-interactive --disallow-untyped-defs src/
-
-code-formatting:
-  stage: code-checks
-  image: 'debian:bookworm'
-  allow_failure: true
-  script:
-    - apt update && apt -qqy install pip python3-poetry python3.11
-    - poetry add black
-    - poetry install
-    - poetry run black --check src/
+include:
+  - project: repositories/hardware-scripts
+    ref: main
+    file: ci_templates/.ci_python_w_docs.yml
 
 test:
   stage: test
@@ -59,31 +36,3 @@ test:
       - jetson-orin-baseboard/README.md
       - jetson-orin-baseboard/LICENSE
       - jetson-orin-baseboard/blendcfg.yaml
-
-docs-build:
-  stage: build
-  before_script:
-    - cd documentation/
-    - pip3 install -r requirements.txt
-    - pip3 install sphinxcontrib-mermaid
-  script:
-    - cd documentation/
-    - make html latexpdf
-    - cp build/latex/*.pdf build/html/
-    - tar cf ../$CI_DOCS_ARCHIVE -C build/html/ .
-  artifacts:
-    paths:
-      - build
-      - $CI_DOCS_ARCHIVE
-
-docs-deploy:
-  variables:
-    GIT_STRATEGY: none
-  dependencies:
-    - docs-build
-  stage: deploy
-  tags: ['docs']
-  script: echo 'Deploying docs'
-  artifacts:
-    paths:
-      - $CI_DOCS_ARCHIVE
