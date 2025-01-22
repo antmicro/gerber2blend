@@ -19,19 +19,19 @@ jobs:
             submodules: false
         - name: Install dependencies
           run: |
-            pip install -r documentation/requirements.txt
+            pip install -r docs/requirements.txt
         - name: Build docs and static demo
           run: |
-            cd documentation
+            cd docs
             PYTHONPATH="/tmp/" make html
         - uses: actions/upload-artifact@v3
           with:
             name: gh-page
-            path: documentation/build/html
+            path: docs/build/html
         - name: Deploy to Github Pages
           if: github.event_name != 'pull_request'
           run: |
-            cd documentation/build/html
+            cd docs/build/html
             touch .nojekyll
             git init
             cp ../../../.git/config ./.git/config
