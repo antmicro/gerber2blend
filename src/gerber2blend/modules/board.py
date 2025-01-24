@@ -412,7 +412,7 @@ def clean_outline(mesh: bpy.types.Object) -> None:
     mesh.select_set(True)
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.mesh.remove_doubles()
+    bpy.ops.mesh.remove_doubles(threshold=0.005)
     bpy.ops.mesh.fill()
     bpy.ops.object.mode_set(mode="OBJECT")
     bpy.ops.object.select_all(action="DESELECT")
