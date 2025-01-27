@@ -62,9 +62,7 @@ html_last_updated_fmt = today_fmt
 
 html_show_sphinx = False
 
-(html_logo, html_theme_options, html_context) = antmicro_html(
-    pdf_url=f"{basic_filename}.pdf"
-)
+(html_logo, html_theme_options, html_context) = antmicro_html()
 
 html_title = project
 
