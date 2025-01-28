@@ -102,7 +102,8 @@ def make_board() -> bpy.types.Object:
             0,
         ]
     )  # type: ignore
-    if config.solder:
+
+    if config.blendcfg["EFFECTS"]["SOLDER"]:
         solder_top = prepare_solder(OUT_F_SOLDER, config.pcbscale_vtracer)
         if solder_top is not None:
             solder_top.location[0] -= pcb.dimensions[0] / 2
@@ -128,7 +129,7 @@ def make_board() -> bpy.types.Object:
             solder_top.select_set(True)
         if not bpy.context.selected_objects:
             # both top and bottom solder are empty
-            config.solder = False
+            config.blendcfg["EFFECTS"]["SOLDER"] = False
         else:
             bpy.ops.object.join()
             solder = bpy.context.selected_objects[0]  # type:ignore
@@ -136,10 +137,14 @@ def make_board() -> bpy.types.Object:
             bpy.ops.object.shade_smooth()
             bpy.ops.object.select_all(action="DESELECT")
             clear_and_set_solder_material(solder)
-        cu.remove_collection(f"{OUT_F_SOLDER}.svg")
-        cu.remove_collection(f"{OUT_B_SOLDER}.svg")
+
         for obj in bpy.context.scene.objects:
             cu.apply_all_transform_obj(obj)
+
+        cu.remove_collection(f"{OUT_F_SOLDER}")
+        cu.remove_collection(f"{OUT_B_SOLDER}")
+        cu.remove_collection(f"{OUT_F_SOLDER}_fixer.svg")
+        cu.remove_collection(f"{OUT_B_SOLDER}_fixer.svg")
 
     # move pcb and holes to center; move holes below Z
     pcb.location -= offset_to_center  # type:ignore
@@ -180,7 +185,6 @@ def make_board() -> bpy.types.Object:
     cu.remove_collection(f"{GBR_EDGE_CUTS}.svg")
     cu.remove_collection(f"{GBR_PTH}.svg")
     cu.remove_collection(f"{GBR_NPTH}.svg")
-
     # extrude board
     extrude_mesh(pcb, layer_thickness[0])
     cu.recalc_normals(pcb)
@@ -214,7 +218,7 @@ def make_board() -> bpy.types.Object:
 
     process_materials(board_col, all_list)
 
-    if config.solder:
+    if config.blendcfg["EFFECTS"]["SOLDER"]:
         cu.link_obj_to_collection(solder, board_col)
 
     # board measurements

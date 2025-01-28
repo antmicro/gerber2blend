@@ -59,7 +59,6 @@ stackup_data: List[Tuple[str, float]] = []
 g2bhickness: float = 0.0
 pcbscale_gerbv: float = 0.0
 pcbscale_vtracer: float = 0.0
-solder: bool = True
 board_created = False
 
 
@@ -75,7 +74,6 @@ def init_global(arguments: argparse.Namespace) -> int:
     global blendcfg
     global args
     global g2b_dir_path
-    global solder
 
     prj_path = getcwd() + "/"
     g2b_dir_path = path.dirname(__file__) + "/.."
@@ -95,7 +93,6 @@ def init_global(arguments: argparse.Namespace) -> int:
 
     configure_paths(arguments)
     configure_constants(arguments)
-    solder = blendcfg["EFFECTS"].get("SOLDER", True)
 
     args = arguments
     return 1

@@ -563,7 +563,7 @@ def prepare_silks(in_file: str, mask: str = "", out_file: str = "") -> None:
 
 def prepare_solder() -> None:
     """Prepare PNG with Solder placements."""
-    if config.solder:
+    if config.blendcfg["EFFECTS"]["SOLDER"]:
         logger.info("Generate PNGs with solder placement")
         prepare_solder_side(GBR_F_CU, GBR_F_MASK, GBR_F_PASTE, OUT_F_SOLDER)
         prepare_solder_side(GBR_B_CU, GBR_B_MASK, GBR_B_PASTE, OUT_B_SOLDER)
