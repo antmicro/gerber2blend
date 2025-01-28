@@ -1,16 +1,16 @@
-default: &default
-  SETTINGS:
-    PRJ_EXTENSION: ".kicad_pro" # file extension used to derive name for generated blend file e.g. example.kicad_pro -> example.blend, type "" if unspecified
-    FAB_DIR: fab # default directory name containing input fabrication (gerber) files
-    DPI: 900 # quality of bitmaps exported from Gerbers, influences board model creation time
-    DEFAULT_BRD_THICKNESS: 1.6 # used when stackup effect is turned off
-    SILKSCREEN: White # options: White (default), Black
+default: 
+  SETTINGS: 
+    PRJ_EXTENSION: ".kicad_pro"   # file extension used to derive name for generated blend file e.g. example.kicad_pro -> example.blend, type "" if unspecified
+    FAB_DIR: fab                  # default directory name containing input fabrication (gerber) files
+    DPI: 900                      # quality of bitmaps exported from Gerbers, influences board model creation time
+    DEFAULT_BRD_THICKNESS: 1.6    # used when stackup effect is turned off
+    SILKSCREEN: White             # options: White (default), Black
     SOLDERMASK:
-      Black # options: Black (default), White, Green, Blue, Red
-      # for custom color, type pair of hex values: AABBCC, DDEEFF (colors for areas with and without copper beneath)
-    USE_INKSCAPE: True # use when board has overlapping holes footprints, sometimes fixes mesh generation
+      Black                       # options: Black (default), White, Green, Blue, Red
+                                  # for custom color, type pair of hex values: AABBCC, DDEEFF (colors for areas with and without copper beneath)
+    USE_INKSCAPE: True            # use when board has overlapping holes footprints, sometimes fixes mesh generation
 
-  GERBER_FILENAMES:
+  GERBER_FILENAMES: 
     EDGE_CUTS: "*-Edge_Cuts.gbr"
     PTH: "*-PTH-drl.gbr"
     NPTH: "*-NPTH-drl.gbr"
@@ -27,10 +27,10 @@ default: &default
     BACK_PASTE: "*-B_Paste.gbr"
 
   EFFECTS:
-    STACKUP: False # if True, requires stackup.json output
-    SOLDER: False # generates solder on pads of mounted components, requires solder paste gerbers
+    STACKUP: False                 # if True, requires stackup.json output
+    SOLDER: False                  # generates solder on pads of mounted components, requires solder paste gerbers
 
-  STAGES:
+  STAGES: 
     - CLEARSCENE:
     - GERBCONVERT:
     - BOARD:

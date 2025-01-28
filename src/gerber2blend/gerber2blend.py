@@ -60,9 +60,15 @@ def parse_args() -> argparse.Namespace:
         default="default",
     )
     parser.add_argument(
-        "-g",
-        "--get-config",
-        help="Copy blendcfg.yaml to CWD and exit",
+        "-R",
+        "--reset-config",
+        help="reset local config settings to the values from the template and exit. Copy blendcfg.yaml to CWD instead if there is no CWD config file found.",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-u",
+        "--update-config",
+        help="update local config settings with the additional ones found in the template and exit. Copy blendcfg.yaml to CWD instead if there is no CWD config file found.",
         action="store_true",
     )
 
@@ -153,19 +159,14 @@ def main() -> None:
     args = parse_args()
     gerber2blend.core.log.set_logging(args.debug)
 
-    if args.get_config:
-        prj_path = getcwd() + "/"
-        g2b_dir_path = path.dirname(__file__)
-        blendcfg.check_and_copy_blendcfg(prj_path, g2b_dir_path, force=True)
-        exit(0)
-
     if args.blend_path and not path.isfile(args.blend_path):
         logger.error(f"Model not found at path: {args.blend_path}")
         exit(1)
 
     try:
-        config.init_global(args)
-        run_modules_for_config(config.blendcfg)
+        if config.init_global(args):
+            run_modules_for_config(config.blendcfg)
+
     except Exception as e:
         logger.error("An error has occured during processing!")
         logger.error("%s", str(e), exc_info=True)

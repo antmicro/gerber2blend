@@ -71,7 +71,7 @@ For description on how stage names from `blendcfg.yaml` are translated to Python
 `gerber2blend` can run with a specified configuration preset by typing `gerber2blend -c custom_preset` as mentioned in [usage chapter](usage.md#additional-cli-arguments). The current template file contains a single, default preset. You can add a new preset and save it in the `blendcfg.yaml` template file as follows:
 
 ```yaml
-default: &default
+default:
     SETTINGS:
         FAB_DIR: fab
         DPI: 900
@@ -79,12 +79,8 @@ default: &default
         ...
 
 custom_preset:
-    <<: *default
     SETTINGS:
-        FAB_DIR: fabrication_dir
         DPI: 1200
-        PRJ_EXTENSION: .kicad_pro
-        ...
 ```
 
-In `blendcfg.yaml presets`, only the fields that are modified need to be included in a new preset. The remaining values are inherited from the default preset through mapping merges.
+In `blendcfg.yaml` presets, only the fields that are modified need to be included in a new preset. The remaining values are inherited from the default preset through mapping merges.

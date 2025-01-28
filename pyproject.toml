@@ -29,10 +29,9 @@ gerber2blend = "gerber2blend.gerber2blend:main"
 
 [tool.poetry.dependencies]
 python = "3.11.*"
-pyyaml = "^6.0.1"
 wand = "^0.6.13"
 bpy = "4.1"
-HiYaPyCo = "0.1.0"
+ruamel-yaml = "==0.18.10"
 vtracer = "0.6.11"
 
 [tool.poetry-dynamic-versioning]

@@ -56,15 +56,15 @@ PCB_name: str = ""
 fab_path: str = ""
 prj_path: str = ""
 stackup_data: List[Tuple[str, float]] = []
-pcbthickness: float = 0.0
+g2bhickness: float = 0.0
 pcbscale_gerbv: float = 0.0
 pcbscale_vtracer: float = 0.0
 solder: bool = True
 board_created = False
 
 
-def init_global(arguments: argparse.Namespace) -> None:
-    """Initialize global variables used across modules.
+def init_global(arguments: argparse.Namespace) -> int:
+    """Process config and initialize global variables used across modules.
 
     Args:
     ----
@@ -80,9 +80,17 @@ def init_global(arguments: argparse.Namespace) -> None:
     prj_path = getcwd() + "/"
     g2b_dir_path = path.dirname(__file__) + "/.."
 
-    # Create blendcfg if it does not exist
-    gerber2blend.core.blendcfg.check_and_copy_blendcfg(prj_path, g2b_dir_path)
-    # Read blendcfg file
+    # Handle blendcfg when argument switch is used and end script
+    if arguments.reset_config:
+        handle_config(overwrite=True)
+        return 0
+    if arguments.update_config:
+        handle_config()
+        return 0
+
+    # Handle blendcfg when no argument is passed and proceed with script
+    handle_config()
+
     blendcfg = gerber2blend.core.blendcfg.open_blendcfg(prj_path, arguments.config_preset)
 
     configure_paths(arguments)
@@ -90,6 +98,15 @@ def init_global(arguments: argparse.Namespace) -> None:
     solder = blendcfg["EFFECTS"].get("SOLDER", True)
 
     args = arguments
+    return 1
+
+
+def handle_config(overwrite: bool = False) -> None:
+    """Determine if config should be copied or merged, applies overwrite mode if enabled in arguments."""
+    if not path.exists(path.join(prj_path, gerber2blend.core.blendcfg.BLENDCFG_FILENAME)):
+        gerber2blend.core.blendcfg.copy_blendcfg(prj_path, g2b_dir_path)
+    else:
+        gerber2blend.core.blendcfg.merge_blendcfg(prj_path, g2b_dir_path, overwrite=overwrite)
 
 
 def configure_paths(arguments: argparse.Namespace) -> None:
