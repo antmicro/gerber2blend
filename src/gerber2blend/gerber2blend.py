@@ -7,7 +7,7 @@ import logging
 import os
 import pkgutil
 import sys
-from os import getcwd, path
+from os import path
 from typing import Any, Optional
 import gerber2blend.core.blendcfg as blendcfg
 import gerber2blend.core.log
@@ -166,6 +166,10 @@ def main() -> None:
     try:
         if config.init_global(args):
             run_modules_for_config(config.blendcfg)
+
+    except blendcfg.BlendcfgValidationError as e:
+        logger.error("%s", str(e), exc_info=False)
+        exit(1)
 
     except Exception as e:
         logger.error("An error has occured during processing!")

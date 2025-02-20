@@ -3,7 +3,8 @@
 import os
 from os import getcwd, path
 import gerber2blend.modules.file_io as fio
-import gerber2blend.core.blendcfg
+import gerber2blend.core.blendcfg as bcfg
+import gerber2blend.core.schema as sch
 from typing import Dict, Any, List, Tuple
 import logging
 import argparse
@@ -89,7 +90,9 @@ def init_global(arguments: argparse.Namespace) -> int:
     # Handle blendcfg when no argument is passed and proceed with script
     handle_config()
 
-    blendcfg = gerber2blend.core.blendcfg.open_blendcfg(prj_path, arguments.config_preset)
+    schema = sch.ConfigurationSchema()
+    blendcfgs = bcfg.open_blendcfg(prj_path, arguments.config_preset)
+    blendcfg = bcfg.validate_blendcfg(blendcfgs, schema)
 
     configure_paths(arguments)
     configure_constants(arguments)
@@ -100,10 +103,10 @@ def init_global(arguments: argparse.Namespace) -> int:
 
 def handle_config(overwrite: bool = False) -> None:
     """Determine if config should be copied or merged, applies overwrite mode if enabled in arguments."""
-    if not path.exists(path.join(prj_path, gerber2blend.core.blendcfg.BLENDCFG_FILENAME)):
-        gerber2blend.core.blendcfg.copy_blendcfg(prj_path, g2b_dir_path)
+    if not path.exists(path.join(prj_path, bcfg.BLENDCFG_FILENAME)):
+        bcfg.copy_blendcfg(prj_path, g2b_dir_path)
     else:
-        gerber2blend.core.blendcfg.merge_blendcfg(prj_path, g2b_dir_path, overwrite=overwrite)
+        bcfg.merge_blendcfg(prj_path, g2b_dir_path, overwrite=overwrite)
 
 
 def configure_paths(arguments: argparse.Namespace) -> None:

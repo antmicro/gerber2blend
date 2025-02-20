@@ -13,7 +13,7 @@ from wand.image import Image  # type: ignore
 from wand.color import Color  # type: ignore
 import vtracer  # type: ignore
 import gerber2blend.core.module
-import gerber2blend.core.blendcfg
+from gerber2blend.core.schema import GerberFilenamesSchema, get_schema_field
 import gerber2blend.modules.config as config
 import gerber2blend.modules.file_io as fio
 import gerber2blend.modules.stackup as stackup
@@ -135,7 +135,7 @@ def do_prepare_build_directory() -> None:
         fpath = os.path.join(config.fab_path, v)
         matches = glob.glob(fpath)
         if len(matches) == 0:
-            if gerber2blend.core.blendcfg.CONFIGURATION_SCHEMA["GERBER_FILENAMES"][k].optional:
+            if not get_schema_field(GerberFilenamesSchema, k).required:
                 logger.warning(f"Did not find optional {k} in path: {config.fab_path}")
             else:
                 logger.error(
