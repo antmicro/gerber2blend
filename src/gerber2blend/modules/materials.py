@@ -21,7 +21,7 @@ from gerber2blend.modules.config import (
     OUT_B_SOLDER,
 )
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, Literal
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,9 @@ def append_material(obj: bpy.types.Object, mat: str) -> None:
     obj.data.materials.append(used_mat)
 
 
-def assign_material(obj: bpy.types.Object, mat_name: str, pos: str, vrts: None | List[Tuple[float]] = None) -> None:
+def assign_material(
+    obj: bpy.types.Object, mat_name: str, pos: Literal["top", "bot", "edge"], vrts: None | List[Tuple[float]] = None
+) -> None:
     """Assign material to a material slot."""
     if vrts is None:
         vrts = []

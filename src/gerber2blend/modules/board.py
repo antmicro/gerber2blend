@@ -6,7 +6,7 @@ import logging
 
 from mathutils import Vector
 from os import listdir, path
-from typing import List, Tuple, Optional, cast, Iterable
+from typing import List, Tuple, Optional, cast, Iterable, Literal
 
 import gerber2blend.core.module
 import gerber2blend.modules.config as config
@@ -190,7 +190,7 @@ def make_board() -> bpy.types.Object:
     cu.recalc_normals(pcb)
     cu.make_sharp_edges(pcb)
 
-    map_pcb_to_uv(pcb)
+    map_pcb_to_uv(pcb, all_pcb_verts)
 
     # add materials to board edges
     process_edge_materials(pcb, plated_pcb_verts, bare_pcb_verts)  # type: ignore
@@ -347,9 +347,12 @@ def get_area_by_type(area_type: str) -> Optional[bpy.types.Area]:
     return None
 
 
-def map_pcb_to_uv(pcb: bpy.types.Object) -> None:
-    """PCB surfaces UV mapping function."""
-    cu.face_sel(pcb, "top")
+def map_faces_to_uv(
+    pcb: bpy.types.Object, side: Literal["top", "bot", "edge"], pcb_verts: None | list[Tuple[float]] = None
+) -> None:
+    """Map specified PCB side to UV."""
+    cu.face_desel(pcb)
+    cu.face_sel(pcb, side, pcb_verts)
     bpy.ops.uv.cube_project(
         cube_size=1.0,
         correct_aspect=True,
@@ -357,13 +360,12 @@ def map_pcb_to_uv(pcb: bpy.types.Object) -> None:
         scale_to_bounds=True,
     )
 
-    cu.face_sel(pcb, "bot")
-    bpy.ops.uv.cube_project(
-        cube_size=1.0,
-        correct_aspect=True,
-        clip_to_bounds=True,
-        scale_to_bounds=True,
-    )
+
+def map_pcb_to_uv(pcb: bpy.types.Object, pcb_verts: list[Tuple[float]]) -> None:
+    """PCB surfaces UV mapping function."""
+    map_faces_to_uv(pcb, "top")
+    map_faces_to_uv(pcb, "bot")
+    map_faces_to_uv(pcb, "edge", pcb_verts)
     bpy.ops.object.mode_set(mode="OBJECT")
 
 

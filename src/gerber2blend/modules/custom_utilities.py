@@ -5,15 +5,15 @@ import bmesh
 import math
 from mathutils import Vector, kdtree
 import logging
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Literal
 
 logger = logging.getLogger(__name__)
 
 
-def get_vertices(mesh: bpy.types.Mesh, precision: int = 0) -> List[Tuple[Any, ...]]:
+def get_vertices(mesh: bpy.types.Mesh, precision: int = 0) -> List[Tuple[float]]:
     """Return list of object's vertices with float precision =-1."""
     verts = [vert.co for vert in mesh.vertices]
-    return [Vector(vert).to_tuple(precision) for vert in verts]  # type: ignore [no-untyped-call]
+    return [Vector(vert).to_tuple(precision) for vert in verts]  # type: ignore
 
 
 def make_kd_tree(verts: List[Tuple[float]]) -> kdtree.KDTree:
@@ -110,7 +110,9 @@ def make_sharp_edges(obj: bpy.types.Object) -> None:
     bpy.ops.object.select_all(action="DESELECT")
 
 
-def face_sel(obj: bpy.types.Object, pos: str, edge_verts: None | List[Tuple[float]] = None) -> None:
+def face_sel(
+    obj: bpy.types.Object, pos: Literal["top", "bot", "edge"], edge_verts: None | List[Tuple[float]] = None
+) -> None:
     """Select faces facing specified direction (top, bottom, edge)."""
     if edge_verts is None:
         edge_verts = []
