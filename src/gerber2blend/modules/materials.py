@@ -206,16 +206,6 @@ def process_materials(board_col: bpy.types.Collection, in_list: List[str]) -> No
         assign_material(board_layer, layers_materials[i + 1], "top")
 
 
-def clear_empty_material_slots() -> None:
-    """Clear empty slots in all objects on scene."""
-    for obj in bpy.data.collections["Board"].all_objects:
-        bpy.context.view_layer.objects.active = obj
-        for slot in obj.material_slots:
-            if not slot.material:
-                bpy.context.object.active_material_index = slot.slot_index
-                bpy.ops.object.material_slot_remove()
-
-
 def clear_and_set_solder_material(obj: bpy.types.Object) -> None:
     """Clear all materials and add solder material instead."""
     obj.data.materials.clear()  # type:ignore

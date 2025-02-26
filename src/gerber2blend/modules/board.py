@@ -26,7 +26,6 @@ from gerber2blend.modules.config import (
 from gerber2blend.modules.materials import (
     process_materials,
     process_edge_materials,
-    clear_empty_material_slots,
     clear_and_set_solder_material,
 )
 
@@ -141,11 +140,6 @@ def make_board() -> bpy.types.Object:
         for obj in bpy.context.scene.objects:
             cu.apply_all_transform_obj(obj)
 
-        cu.remove_collection(f"{OUT_F_SOLDER}")
-        cu.remove_collection(f"{OUT_B_SOLDER}")
-        cu.remove_collection(f"{OUT_F_SOLDER}_fixer.svg")
-        cu.remove_collection(f"{OUT_B_SOLDER}_fixer.svg")
-
     # move pcb and holes to center; move holes below Z
     pcb.location -= offset_to_center  # type:ignore
     if pth:
@@ -176,15 +170,13 @@ def make_board() -> bpy.types.Object:
     if pth:
         logger.info("Cutting PTH holes in board (may take a while!).")
         boolean_diff(pcb, pth)
+
     all_pcb_verts = cu.get_vertices(pcb.data, 4)
     # list of plated pcb edges vertices
     plated_pcb_verts = cu.get_verts_difference(all_pcb_verts, bare_pcb_verts)  # type: ignore
 
     logger.debug(f"Number of verts on bare board edges: {len(bare_pcb_verts)}")
     logger.debug(f"Number of verts on plated board edges: {len(plated_pcb_verts)}")
-    cu.remove_collection(f"{GBR_EDGE_CUTS}.svg")
-    cu.remove_collection(f"{GBR_PTH}.svg")
-    cu.remove_collection(f"{GBR_NPTH}.svg")
     # extrude board
     extrude_mesh(pcb, layer_thickness[0])
     cu.recalc_normals(pcb)
@@ -253,8 +245,7 @@ def make_board() -> bpy.types.Object:
             bpy.context.scene.collection.children.unlink(col)
             project_col.children.link(col)
 
-    clear_empty_material_slots()
-
+    cu.clear_obsolete_data()
     logger.info("Board generated!")
     return empty_obj
 

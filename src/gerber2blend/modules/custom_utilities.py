@@ -189,3 +189,50 @@ def save_pcb_blend(path: str, apply_transforms: bool = False) -> None:
         for obj in bpy.context.scene.objects:
             apply_all_transform_obj(obj)
     bpy.ops.wm.save_as_mainfile(filepath=path)
+
+
+def clear_obsolete_data() -> None:
+    """Cleanup obsolete data from file."""
+    clear_unused_meshes()
+    clear_unused_curves()
+    clear_empty_material_slots()
+    clear_unused_materials()
+    remove_empty_collections()
+
+
+def clear_unused_meshes() -> None:
+    """Remove unused meshes from file."""
+    for mesh in bpy.data.meshes:
+        if mesh.users == 0:
+            bpy.data.meshes.remove(mesh)
+
+
+def clear_unused_curves() -> None:
+    """Remove unused curves from file."""
+    for curve in bpy.data.curves:
+        if curve.users == 0:
+            bpy.data.curves.remove(curve)
+
+
+def clear_unused_materials() -> None:
+    """Remove unused materials from file."""
+    for mat in bpy.data.materials:
+        if mat.users == 0 or mat.name == "Dots Stroke":
+            bpy.data.materials.remove(mat)
+
+
+def clear_empty_material_slots() -> None:
+    """Clear empty slots in all objects on scene."""
+    for obj in bpy.data.collections["Board"].all_objects:
+        bpy.context.view_layer.objects.active = obj
+        for slot in obj.material_slots:
+            if not slot.material:
+                bpy.context.object.active_material_index = slot.slot_index
+                bpy.ops.object.material_slot_remove()
+
+
+def remove_empty_collections() -> None:
+    """Remove all collections with no children."""
+    for col in bpy.data.collections:
+        if not col.all_objects:
+            bpy.data.collections.remove(col)
