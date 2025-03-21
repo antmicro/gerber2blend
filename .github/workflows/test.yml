@@ -48,7 +48,7 @@ jobs:
             cd ./jetson-orin-baseboard
             gerber2blend -d
 
-        - uses: actions/upload-artifact@v3
+        - uses: actions/upload-artifact@v4
           with:
             name: HW project artifacts
             path: |
