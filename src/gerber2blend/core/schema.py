@@ -85,6 +85,7 @@ class GerberFilenamesSchema(BaseSchema):
 class EffectsSchema(BaseSchema):
     STACKUP = fields.Bool()
     SOLDER = fields.Bool()
+    IGNORE_VIAS = fields.Bool()
 
 
 class ConfigurationSchema(BaseSchema):

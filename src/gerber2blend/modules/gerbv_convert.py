@@ -37,6 +37,7 @@ from gerber2blend.modules.config import (
     OUT_F_SOLDER,
     OUT_B_SOLDER,
 )
+import gerber  # type: ignore
 
 HEX_BLACK = "#000000"
 HEX_BLACK_ALPHA = "#00000000"  # with alpha
@@ -64,6 +65,8 @@ class GerbConvert(gerber2blend.core.module.Module):
     def execute(self) -> None:
         """Run the module."""
         do_prepare_build_directory()
+        if config.blendcfg["EFFECTS"]["IGNORE_VIAS"]:
+            do_remove_via_holes()
         do_convert_layer_to_png()
         do_generate_displacement_map_foundation()
         do_crop_pngs()
@@ -194,6 +197,46 @@ def do_prepare_build_directory() -> None:
 
     if gerbers_missing:
         raise RuntimeError(f"One or more mandatory Gerber files are missing from the {gbr_dir}/ directory.")
+
+
+def do_remove_via_holes() -> None:
+    """Remove small PTH holes representing vias from input Gerber files."""
+    pth_gbr_path = os.path.join(config.gbr_path, GBR_PTH + ".gbr")
+    logger.info("Removing via holes from working copy of PTH Gerber file.")
+    if not os.path.exists(pth_gbr_path):
+        logger.info("PTH file is not present. No vias to remove.")
+        return
+    # override faulty gerber.read function
+    with open(pth_gbr_path, "r") as f:
+        data = f.read()
+        pth_gbr_file = gerber.loads(data, pth_gbr_path)
+
+    via_min_diameter = 0.5
+    new_objects = []
+    apertures_to_remove = []
+    entered_apertures_to_remove = False
+    for obj in pth_gbr_file.statements:
+        # find apertures definitions and filter those below diameter threshold
+        match type(obj):
+            case gerber.gerber_statements.ADParamStmt:
+                if obj.modifiers[0][0] <= via_min_diameter:
+                    apertures_to_remove.append(obj.d)
+            case gerber.gerber_statements.ApertureStmt:
+                if obj.d in apertures_to_remove:
+                    entered_apertures_to_remove = True
+                else:
+                    entered_apertures_to_remove = False
+            case gerber.gerber_statements.CoordStmt:
+                if entered_apertures_to_remove is True:
+                    # do not add aperture to new_objects
+                    continue
+            case _:
+                entered_apertures_to_remove = False
+        new_objects.append(obj)
+
+    pth_gbr_file.statements = new_objects
+    pth_gbr_path = os.path.join(config.gbr_path, GBR_PTH + ".gbr")
+    pth_gbr_file.write(pth_gbr_path)
 
 
 def do_convert_gerb_to_svg() -> None:

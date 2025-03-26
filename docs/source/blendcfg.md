@@ -1,6 +1,6 @@
 # Configuring blendcfg.yaml
 
-You can customize outputs by editing the `blendcfg.yaml` file which defines rendering options and variants to be generated. 
+You can customize outputs by editing the `blendcfg.yaml` file which defines model generation options.
 The file needs to be placed in the main directory of the hardware project.
 A default `blendcfg.yaml` is copied into the project directory when one does not exist.
 Alternatively you can copy it from the template file using `gerber2blend` with `-g` argument.
@@ -12,15 +12,16 @@ General board and conversion settings:
 * `PRJ_EXTENSION` - string containing EDA software main project file extension, used to read the PCB project name from it. Can be set to `""` if the extension is undefined. If no files with this extension are found, `unknownpcb` will be used as name. 
 * `FAB_DIR` - string with the name of a directory containing all input Gerber files, stackup files, temporary files and a final board model. The directory can be described as a path relative to project's main directory. By default the `fab/` directory is used.
 * `DPI` - target dot density of bitmaps exported from Gerber files; influences quality of PCB soldermask shaders and board model creation time. Standard value is **900**. 
-* `DEFAULT_BRD_THICKNESS` - default board thickness used to generate PCB model when rendering without stackup provided. Default value is **1.6**.
+* `DEFAULT_BRD_THICKNESS` - default board thickness used to generate PCB model when stackup is not provided. Default value is **1.6**.
 * `SILKSCREEN` - silkscreen marking color on PCB texture, options: `White` (default), `Black`
 * `SOLDERMASK` - soldermask color on PCB texture, options: `Black` (default), `White`, `Green`, `Blue`, `Red`. To use custom RGB values, input a pair of hex values: `AABBCC, DDEEFF` (colors for areas with and without copper beneath). `gerber2blend` converts provided RGB codes to Blender color space.
 * `USE_INKSCAPE` - helper Inkscape SVG convert operation that can be used for boards with footprints with overlapping holes that cause problems with generating a PCB mesh from Gerber-based SVG files. Requires Inkscape >1.2.
 
 ### `EFFECTS`
-Enables additional render effects:
+Enables additional mesh generation effects:
 * `STACKUP`- generates separate models for each copper layer of the PCB, requires `stackup.json` to be provided in the `fab/` directory. This file format is specified in the [Getting started section](quickstart.md#stackup-format).
 * `SOLDER`- generates solder on pads of mounted components, requires solder paste gerbers to be provided in the `fab/` directory.
+* `IGNORE_VIAS` - skips via holes when creating a PCB mesh. Results in a simpler and lighter model.
 
 ```{note}
 To ensure correct application of the SOLDER effect on pads when exporting Gerber files, make sure that solder paste is also included on THT pads (as this might not be the default setting in your ECAD software). Additionally, ensure that solder paste is not exported for DNP components or for non-pad areas with exposed copper.

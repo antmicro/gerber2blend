@@ -29,6 +29,7 @@ default:
   EFFECTS:
     STACKUP: False                 # if True, requires stackup.json output
     SOLDER: False                  # generates solder on pads of mounted components, requires solder paste gerbers
+    IGNORE_VIAS: False             # skips via holes when creating a PCB mesh
 
   STAGES: 
     - CLEARSCENE:
