@@ -119,9 +119,9 @@ def set_soldermask_color(soldermask_color: Tuple[str, str]) -> None:
         "Red": [0xD01B10, 0x83140B],
     }
     masked_color_val: int = 0
-    if len(soldermask_color) == 2:  # custom colors
-        masked_color_val = int(soldermask_color[0], 16)
-        unmasked_color_val = int(soldermask_color[1], 16)
+    if len(soldermask_color[0]) == 2:  # custom colors
+        masked_color_val = int(str(soldermask_color[0][0]), 16)
+        unmasked_color_val = int(str(soldermask_color[0][1]), 16)
     else:
         [masked_color_val, unmasked_color_val] = colors_dict[soldermask_color[0]]  # preset color used
 
