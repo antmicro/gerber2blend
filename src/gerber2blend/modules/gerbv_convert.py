@@ -377,25 +377,35 @@ def get_gerbers_to_convert_to_png() -> List[str]:
 ########################################
 
 
+def get_alignment_layers(color: str) -> str:
+    """
+    Prepare command string with alignment layers to be exported with gerbv.
+    The alignment layers are layers that are needed to definitively ensure the same export dimensions and layer placements across all layer exports.
+    Takes color in hex format ('#DDBBCCAA' convention) as argument and uses it as alignment layers' foreground color.
+    It should be matched to be the same as export's background color.
+    """
+    gbr_path = config.gbr_path
+    fg = "--foreground"
+    return f"'{gbr_path}{GBR_F_MASK}.gbr' {fg}={color} '{gbr_path}{GBR_B_MASK}.gbr' {fg}={color} \
+                '{gbr_path}{GBR_F_FAB}.gbr' {fg}={color} '{gbr_path}{GBR_B_FAB}.gbr' {fg}={color} \
+                '{gbr_path}{GBR_F_SILK}.gbr' {fg}={color} '{gbr_path}{GBR_B_SILK}.gbr' {fg}={color} \
+                '{gbr_path}{GBR_EDGE_CUTS}.gbr' {fg}={color}"
+
+
 def gbr_png_convert(data: Tuple[str, str, str, str]) -> None:
     """Convert gerber file to png with given input name, output name, background and foreground."""
     gbr_file_name = data[0] + ".gbr"
     png_file_name = data[1] + ".png"
 
-    gbr_path = config.gbr_path
     in_gbr_file_path = os.path.join(config.gbr_path, gbr_file_name)
     png_path = os.path.join(config.png_path, png_file_name)
 
     bg_color = data[2]
     fg_color = data[3]
     fg = "--foreground"
-    # All data are present in gerbv convert function to ensure the same size of all converted PNGs
     rc = os.system(
         f"gerbv '{in_gbr_file_path}' --background={bg_color} {fg}={fg_color} \
-        '{gbr_path}{GBR_F_MASK}.gbr' {fg}={HEX_BLACK_ALPHA} '{gbr_path}{GBR_B_MASK}.gbr' {fg}={HEX_BLACK_ALPHA} \
-        '{gbr_path}{GBR_F_FAB}.gbr' {fg}={HEX_BLACK_ALPHA} '{gbr_path}{GBR_B_FAB}.gbr' {fg}={HEX_BLACK_ALPHA} \
-        '{gbr_path}{GBR_F_SILK}.gbr' {fg}={HEX_BLACK_ALPHA} '{gbr_path}{GBR_B_SILK}.gbr' {fg}={HEX_BLACK_ALPHA} \
-        '{gbr_path}{GBR_EDGE_CUTS}.gbr' {fg}={HEX_BLACK_ALPHA} \
+        {get_alignment_layers(HEX_BLACK_ALPHA)} \
         -o '{png_path}' --dpi={config.blendcfg['SETTINGS']['DPI']} -a --export=png 2>/dev/null"
     )
     if rc != 0:
@@ -412,10 +422,7 @@ def generate_displacement_map_png(filename: str) -> None:
         f"gerbv '{gbr_path}{GBR_PTH}.gbr' --background=#555555 {fg}=#000000ff \
         '{gbr_path}{GBR_NPTH}.gbr' {fg}=#000000ff \
         '{gbr_path}{side}_Cu.gbr' {fg}=#808080ff \
-        '{gbr_path}{GBR_F_MASK}.gbr' {fg}={HEX_BLACK_ALPHA} '{gbr_path}{GBR_B_MASK}.gbr' {fg}={HEX_BLACK_ALPHA} \
-        '{gbr_path}{GBR_F_FAB}.gbr' {fg}={HEX_BLACK_ALPHA} '{gbr_path}{GBR_B_FAB}.gbr' {fg}={HEX_BLACK_ALPHA} \
-        '{gbr_path}{GBR_F_SILK}.gbr' {fg}={HEX_BLACK_ALPHA} '{gbr_path}{GBR_B_SILK}.gbr' {fg}={HEX_BLACK_ALPHA} \
-        '{gbr_path}{GBR_EDGE_CUTS}.gbr' {fg}={HEX_BLACK_ALPHA} \
+        {get_alignment_layers(HEX_BLACK_ALPHA)} \
         -o '{png_path}' -a --dpi={config.blendcfg['SETTINGS']['DPI']} --export=png 2> /dev/null"
     )
     if rc != 0:
@@ -458,6 +465,8 @@ def gbr_to_svg_convert(file_name: str) -> None:
         raise RuntimeError(f"Gerber file {gbr_file_path} does not exist!")
 
     gerbv_command = f"gerbv '{gbr_file_path}' --foreground={HEX_BLACK} \
+    '{gbr_path}{GBR_NPTH}.gbr' --foreground={HEX_WHITE} \
+    '{gbr_path}{GBR_PTH}.gbr' --foreground={HEX_WHITE} \
     '{gbr_path}{GBR_EDGE_CUTS}.gbr' --foreground={HEX_WHITE} \
     -o '{svg_file_path}' --export=svg 2>/dev/null"
     rc = os.system(gerbv_command)
