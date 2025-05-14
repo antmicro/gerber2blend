@@ -6,6 +6,7 @@ import math
 from mathutils import Vector, kdtree
 import logging
 from typing import List, Tuple, Any, Literal
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -176,10 +177,42 @@ def link_obj_to_collection(obj: bpy.types.Object, target_coll: bpy.types.Collect
 
 
 def apply_all_transform_obj(obj: bpy.types.Object) -> None:
-    """Apply all object transfromations."""
+    """Apply all object transformations."""
     obj.select_set(True)
     bpy.ops.object.transform_apply()
     obj.select_set(False)
+
+
+def make_image_paths_relative(image: bpy.types.Image) -> None:
+    """Set image paths to relative."""
+    image.filepath = f"//{image.filepath.split('/')[-1]}"
+    for packed_image in image.packed_files:
+        packed_image.filepath = f"//{packed_image.filepath.split('/')[-1]}"
+
+
+def mkdir(path: str) -> None:
+    """Create a directory at the specified path.
+
+    Wraps any errors with a nicer error exception.
+    """
+    try:
+        os.makedirs(path, exist_ok=True)
+    except OSError as e:
+        raise RuntimeError(f"Could not create folder at path {path}: {repr(e)}") from e
+
+
+def export_to_gltf(gltf_file_path: str, textures_path: str) -> None:
+    """Save PCB in glTF format."""
+    logger.info(f"Exporting PCB model into glTF format to: {gltf_file_path}")
+    bpy.ops.export_scene.gltf(
+        filepath=str(gltf_file_path),
+        check_existing=False,
+        export_format="GLTF_SEPARATE",
+        export_extras=True,
+        export_apply=True,
+        export_texture_dir=textures_path,
+        export_draco_mesh_compression_enable=False,
+    )
 
 
 def save_pcb_blend(path: str, apply_transforms: bool = False) -> None:
@@ -197,6 +230,7 @@ def clear_obsolete_data() -> None:
     clear_unused_curves()
     clear_empty_material_slots()
     clear_unused_materials()
+    clear_unused_images()
     remove_empty_collections()
 
 
@@ -212,6 +246,13 @@ def clear_unused_curves() -> None:
     for curve in bpy.data.curves:
         if curve.users == 0:
             bpy.data.curves.remove(curve)
+
+
+def clear_unused_images() -> None:
+    """Remove unused images from file."""
+    for image in bpy.data.images:
+        if image.users == 0:
+            bpy.data.images.remove(image)
 
 
 def clear_unused_materials() -> None:

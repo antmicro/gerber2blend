@@ -16,6 +16,7 @@ import gerber2blend.core.module
 from gerber2blend.core.schema import GerberFilenamesSchema, get_schema_field
 import gerber2blend.modules.config as config
 import gerber2blend.modules.file_io as fio
+import gerber2blend.modules.custom_utilities as cu
 import gerber2blend.modules.stackup as stackup
 from gerber2blend.modules.config import (
     GBR_IN,
@@ -84,9 +85,9 @@ def do_prepare_build_directory() -> None:
     are replaced with a dummy.
     """
     # Prepare paths; create subdirectories for intermediate steps files
-    mkdir(config.svg_path)
-    mkdir(config.png_path)
-    mkdir(config.gbr_path)
+    cu.mkdir(config.svg_path)
+    cu.mkdir(config.png_path)
+    cu.mkdir(config.gbr_path)
 
     # Remove old temp files
     remove_files_with_ext(config.png_path, ".png")
@@ -427,17 +428,6 @@ def generate_displacement_map_png(filename: str) -> None:
     )
     if rc != 0:
         raise RuntimeError(f"Failed to generate displacement map: gerbv returned exit code {rc}")
-
-
-def mkdir(path: str) -> None:
-    """Create a directory at the specified path.
-
-    Wraps any errors with a nicer error exception.
-    """
-    try:
-        os.makedirs(path, exist_ok=True)
-    except OSError as e:
-        raise RuntimeError(f"Could not create folder at path {path}: {repr(e)}") from e
 
 
 def copy_file(path: str, new_path: str, old_file_name: str, new_file_name: str) -> None:

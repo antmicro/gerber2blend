@@ -63,6 +63,7 @@ class SettingsSchema(BaseSchema):
     SILKSCREEN = Color(presets={"White", "Black"}, allow_none=True)
     SOLDERMASK = Color(presets={"Black", "White", "Green", "Blue", "Red"}, allow_none=True)
     USE_INKSCAPE = fields.Bool()
+    GENERATE_GLTF = fields.Bool()
 
 
 class GerberFilenamesSchema(BaseSchema):

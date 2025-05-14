@@ -103,6 +103,18 @@ Layers named `F.Cu`, `B.Cu` or `InX.Cu` are interpreted as copper layers. `F.Mas
 
 The resulting PCB model file, `<project-name>.blend`, is saved in `[path to project repository]/fab/`.
 
+### glTF format
+
+`gerber2blend` allows also to export PCB model into glTF format, when defined `GENERATE_GLTF` in `blendcfg`. `.blend` model of PCB is also saved then however with materials slightly modified to support glTF export. Model in glTF format is saved in `[path to project repository]/fab/gltf/`.
+
+```{note}
+After generating model in glTF format the script may end up with a Segmentation Fault.
+This is already a known bug caused by `bpy` dependency. 
+The error does not influence `gerber2blend` operations and their outputs. 
+It has been confirmed that the bug and is solved with `bpy=4.3`.
+The gerber2blend project and dependent projects will be updated to make them use the newer `bpy`.
+```
+
 ### Additional CLI arguments
 
 `gerber2blend` supports the following command arguments:

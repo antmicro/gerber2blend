@@ -16,6 +16,7 @@ General board and conversion settings:
 * `SILKSCREEN` - silkscreen marking color on PCB texture, options: `White` (default), `Black`
 * `SOLDERMASK` - soldermask color on PCB texture, options: `Black` (default), `White`, `Green`, `Blue`, `Red`. To use custom RGB values, input a pair of hex values: `AABBCC, DDEEFF` (colors for areas with and without copper beneath). `gerber2blend` converts provided RGB codes to Blender color space.
 * `USE_INKSCAPE` - helper Inkscape SVG convert operation that can be used for boards with footprints with overlapping holes that cause problems with generating a PCB mesh from Gerber-based SVG files. Requires Inkscape >1.2.
+* `GENERATE_GLTF` - converts shaders to glTF-compatible format and exports generated board to glTF format
 
 ### `EFFECTS`
 Enables additional mesh generation effects:

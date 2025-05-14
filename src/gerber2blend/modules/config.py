@@ -8,6 +8,7 @@ import gerber2blend.core.schema as sch
 from typing import Dict, Any, List, Tuple
 import logging
 import argparse
+import pathlib
 
 # displacement map outputs from gerber -> png conversion
 OUT_F_DISPMAP = "F_dispmap"
@@ -50,6 +51,9 @@ png_path: str = ""
 gbr_path: str = ""
 svg_path: str = ""
 pcb_blend_path: str = ""
+pcb_gltf_file_path: str = ""
+pcb_gltf_dir_path: str = ""
+pcb_gltf_textures_path: str = ""
 mat_blend_path: str = ""
 mat_library_path: str = ""
 model_library_path: str = ""
@@ -122,6 +126,9 @@ def configure_paths(arguments: argparse.Namespace) -> None:
     global gbr_path
     global svg_path
     global pcb_blend_path
+    global pcb_gltf_file_path
+    global pcb_gltf_dir_path
+    global pcb_gltf_textures_path
     global mat_blend_path
     global mat_library_path
     global model_library_path
@@ -138,9 +145,16 @@ def configure_paths(arguments: argparse.Namespace) -> None:
     if arguments.blend_path is None:
         PCB_name = fio.read_pcb_name(prj_path)
         pcb_blend_path = fab_path + PCB_name + ".blend"
+        pcb_gltf_dir_path = fab_path + "gltf/"
+        pcb_gltf_textures_path = pcb_gltf_dir_path + "gltf_textures/"
+        pcb_gltf_file_path = pcb_gltf_dir_path + PCB_name + ".gltf"
     else:
         PCB_name = arguments.blend_path.split("/")[-1].replace(".blend", "")
         pcb_blend_path = path.abspath(arguments.blend_path)
+        parent_dir_path = "/".join(arguments.blend_path.split("/")[:-1])
+        pcb_gltf_dir_path = parent_dir_path + "/gltf/"
+        pcb_gltf_textures_path = parent_dir_path + "/gltf/gltf_textures/"
+        pcb_gltf_file_path = pcb_gltf_dir_path + PCB_name + ".gltf"
 
     png_path = fab_path + "PNG/"
     gbr_path = fab_path + "GBR/"

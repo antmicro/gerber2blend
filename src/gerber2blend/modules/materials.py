@@ -143,14 +143,20 @@ def process_edge_materials(
     pcb: bpy.types.Object, plated_verts: List[Tuple[float]], bare_verts: List[Tuple[float]]
 ) -> None:
     """Assign gold or edge material to model sides."""
-    materials = ["main_pcb_edge_gold", "main_pcb_edge_bare"]
+    if config.blendcfg["SETTINGS"]["GENERATE_GLTF"]:
+        edge_gold_material = "gltf_main_pcb_edge_gold"
+        edge_bare_material = "gltf_main_pcb_edge_bare"
+    else:
+        edge_gold_material = "main_pcb_edge_gold"
+        edge_bare_material = "main_pcb_edge_bare"
+    materials = [edge_gold_material, edge_bare_material]
     load_materials(materials)
 
     for material in materials:
         append_material(pcb, material)
 
-    assign_material(pcb, "main_pcb_edge_gold", "edge", plated_verts)
-    assign_material(pcb, "main_pcb_edge_bare", "edge", bare_verts)
+    assign_material(pcb, edge_gold_material, "edge", plated_verts)
+    assign_material(pcb, edge_bare_material, "edge", bare_verts)
 
 
 def process_materials(board_col: bpy.types.Collection, in_list: List[str]) -> None:
@@ -205,10 +211,151 @@ def process_materials(board_col: bpy.types.Collection, in_list: List[str]) -> No
         assign_material(board_layer, layers_materials[i], "bot")
         assign_material(board_layer, layers_materials[i + 1], "top")
 
+    if config.blendcfg["SETTINGS"]["GENERATE_GLTF"]:
+        convert_pcb_materials_to_gltf_format(board_col)
+
+
+def setup_gpu() -> None:
+    """Find compatible GPU devices and enable them for rendering. If no suitable GPU is found, use CPU instead."""
+    cycles_preferences = bpy.context.preferences.addons["cycles"].preferences
+    cycles_preferences.refresh_devices()  # type: ignore
+    logger.debug(f"Available devices: {[device for device in cycles_preferences.devices]}")  # type: ignore
+    gpu_types = [
+        "CUDA",
+        "OPTIX",
+        "HIP",
+        "ONEAPI",
+        "METAL",
+    ]
+
+    try:
+        device = next((dev for dev in cycles_preferences.devices if dev.type in gpu_types))  # type: ignore
+        bpy.context.scene.cycles.device = "GPU"
+        cycles_preferences.compute_device_type = device.type  # type: ignore
+        logger.info(f"Enabled GPU rendering with: {device.name}.")
+    except StopIteration:
+        device = next((dev for dev in cycles_preferences.devices if dev.type == "CPU"), None)  # type: ignore
+        bpy.context.scene.cycles.device = "CPU"
+        cycles_preferences.compute_device_type = "NONE"  # type: ignore
+        logger.info(f"No GPU device found, enabled CPU rendering with: {device.name}")
+    device.use = True
+
+
+def init_render_settings() -> None:
+    """Set up initial renderer properties for texture baking."""
+    logger.info("Setting up initial render properties for texture baking...")
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.samples = 50
+    scene.cycles.use_denoising = True
+
+    setup_gpu()
+
+
+def create_image_node(node_name: str, nodes: bpy.types.Nodes, img_res: List[int], color: bool = True) -> bpy.types.Node:
+    """Create Image node with new texture."""
+    image = bpy.data.images.new(node_name, height=img_res[1], width=img_res[0], is_data=color)
+    image.filepath_raw = f"{config.pcb_gltf_textures_path}{node_name}.png"
+    image.file_format = "PNG"
+    texture_node = nodes.new("ShaderNodeTexImage")
+    texture_node.name = node_name
+    texture_node.image = image  # type:ignore
+    return texture_node
+
+
+def bake_texture(image_node: bpy.types.Node, nodes: bpy.types.Nodes, bake_type: str) -> None:
+    """Bake given texture property."""
+    logger.info(f"Baking {image_node.name} texture...")
+    image_node.select = True
+    nodes.active = image_node
+    with fio.stdout_redirected():
+        bpy.ops.object.bake(type=bake_type, save_mode="EXTERNAL")
+    image = image_node.image  # type:ignore
+    image.save()
+    image.pack()
+    cu.make_image_paths_relative(image)
+    nodes.active = None  # type:ignore
+    image_node.select = False
+
+
+def apply_baked_texture(gltf_nodes: bpy.types.Nodes, node_name: str, image: bpy.types.Image) -> None:
+    """Substitute template textures with baked textures."""
+    image_node = gltf_nodes.get(node_name)
+    image_node.image = image  # type:ignore
+
+
+def make_gltf_compatibile_shader(
+    object_with_texture: bpy.types.Object, material: bpy.types.Material, img_res: List[int]
+) -> bpy.types.Material:
+    """Make a single shader gltf-compatibile and rename it."""
+    bpy.context.view_layer.objects.active = object_with_texture
+    object_with_texture.select_set(True)
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    color_image_node = create_image_node(f"gltf_{config.PCB_name}_{material.name}_color", nodes, img_res, False)
+    metallic_image_node = create_image_node(f"gltf_{config.PCB_name}_{material.name}_metallic", nodes, img_res)
+    roughness_image_node = create_image_node(f"gltf_{config.PCB_name}_{material.name}_roughness", nodes, img_res)
+    normal_image_node = create_image_node(f"gltf_{config.PCB_name}_{material.name}_normal", nodes, img_res)
+    for node in nodes:
+        if node.type == "OUTPUT_MATERIAL":
+            mat_output_node = node
+            continue
+        if not hasattr(node, "node_tree"):
+            continue
+        if "Metallic_group" in node.node_tree.name:
+            metallic_group_node = node
+        elif "Color_group" in node.node_tree.name:
+            color_group_node = node
+        elif "Roughness_group" in node.node_tree.name:
+            roughness_group_node = node
+
+    # bake textures
+    bake_texture(normal_image_node, nodes, "NORMAL")
+    emission_node = nodes.new("ShaderNodeEmission")
+    links.new(emission_node.outputs["Emission"], mat_output_node.inputs["Surface"])
+    nodes_to_bake = [
+        [color_group_node, color_image_node],
+        [metallic_group_node, metallic_image_node],
+        [roughness_group_node, roughness_image_node],
+    ]
+    for group, image in nodes_to_bake:
+        links.new(group.outputs["Output_0"], emission_node.inputs["Color"])
+        bake_texture(image, nodes, "EMIT")
+
+    # load PCB template material
+    load_materials(["gltf_main_pcb_template"])
+    gltf_main_pcb_material = bpy.data.materials.get("gltf_main_pcb_template")
+    gltf_main_pcb_material.name = f"gltf_{config.PCB_name}_{material.name}"
+    gltf_nodes = gltf_main_pcb_material.node_tree.nodes
+
+    # replace template textures with baked textures
+    apply_baked_texture(gltf_nodes, "texture_color", color_image_node.image)  # type:ignore
+    apply_baked_texture(gltf_nodes, "texture_metallic", metallic_image_node.image)  # type:ignore
+    apply_baked_texture(gltf_nodes, "texture_roughness", roughness_image_node.image)  # type:ignore
+    apply_baked_texture(gltf_nodes, "texture_normal", normal_image_node.image)  # type:ignore
+    object_with_texture.select_set(False)
+    return gltf_main_pcb_material
+
+
+def convert_pcb_materials_to_gltf_format(board_col: bpy.types.Collection) -> None:
+    """Bake PCB materials textures and update PCB materials to use them."""
+    pcb_materials = ["main_pcb_top", "main_pcb_bot"]
+    init_render_settings()
+    f_cu_image = bpy.data.images["F_Cu.png"]
+    img_resolution = f_cu_image.size
+    for _, board_layer in enumerate(board_col.objects):
+        for material_slot in board_layer.material_slots:
+            material = material_slot.material
+            if material.name not in pcb_materials:
+                continue
+            material_slot.material = make_gltf_compatibile_shader(board_layer, material, img_resolution)  # type:ignore
+            bpy.data.materials.remove(material)
+    cu.clear_obsolete_data()
+
 
 def clear_and_set_solder_material(obj: bpy.types.Object) -> None:
     """Clear all materials and add solder material instead."""
     obj.data.materials.clear()  # type:ignore
-    material = "Solder"
+    material = "gltf_Solder" if config.blendcfg["SETTINGS"]["GENERATE_GLTF"] else "Solder"
     load_materials([material])
     append_material(obj, material)

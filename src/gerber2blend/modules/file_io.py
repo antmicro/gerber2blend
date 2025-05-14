@@ -1,11 +1,14 @@
 """Module performing input/output operations on files."""
 
 import bpy
-from os import listdir
+import os
+import sys
 import logging
 import gerber2blend.modules.config as config
 from pathlib import Path
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Generator, List, Any
+from io import TextIOWrapper
+from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +34,7 @@ def read_pcb_name_from_prj(path: str, extension: str) -> str:
     This function will fail and throw a `RuntimeError` if `path` is
     not a valid project directory.
     """
-    files = listdir(path)
+    files = os.listdir(path)
     project_file = [f for f in files if f.endswith(extension)]
 
     if len(project_file) != 1:
@@ -57,6 +60,34 @@ def read_pcb_name(path: str) -> str:
     # default case
     logger.warning("Using default value for PCB name")
     return DEFAULT_PCB_NAME
+
+
+@contextmanager
+def stdout_redirected(to: str = os.devnull) -> Generator[None, Any, None]:
+    """
+    Redirect the standard output to dev/null.
+
+    This context manager temporarily redirects `sys.stdout` to a specified target file or stream.
+    During the redirection, any output written to `print()` or `sys.stdout` will be written to the target
+    instead of the original `stdout`. After exiting the context, `sys.stdout` is restored to its original state.
+
+    https://blender.stackexchange.com/questions/6119/suppress-output-of-python-operators-bpy-ops
+    """
+
+    fd = sys.stdout.fileno()
+
+    def _redirect_stdout(to: TextIOWrapper) -> None:
+        sys.stdout.close()  # + implicit flush()
+        os.dup2(to.fileno(), fd)  # fd writes to 'to' file
+        sys.stdout = os.fdopen(fd, "w")  # Python writes to fd
+
+    with os.fdopen(os.dup(fd), "w") as old_stdout:
+        with open(to, "w") as file:
+            _redirect_stdout(to=file)
+        try:
+            yield  # allow code to be run with the redirected stdout
+        finally:
+            _redirect_stdout(to=old_stdout)  # restore stdout
 
 
 ########################################

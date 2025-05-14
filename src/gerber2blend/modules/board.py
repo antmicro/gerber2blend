@@ -46,6 +46,11 @@ class Board(gerber2blend.core.module.Module):
         make_board()
         config.board_created = True
         cu.save_pcb_blend(config.pcb_blend_path, apply_transforms=True)
+        if config.blendcfg["SETTINGS"]["GENERATE_GLTF"]:
+            prepare_gltf_structure()
+            cu.save_pcb_blend(config.pcb_blend_path, apply_transforms=True)
+            bpy.ops.wm.open_mainfile(filepath=config.pcb_blend_path)
+            cu.export_to_gltf(config.pcb_gltf_file_path, config.pcb_gltf_textures_path)
 
 
 ########################################
@@ -555,3 +560,14 @@ def clean_bool_diff_artifacts(pcb: bpy.types.Object) -> None:
     logging.debug(f"Number of corrupted vertices to remove: {len(verts)}")
     logging.debug(f"Final count of vertices in mesh: {len(mesh_obj.verts)}")  # type:ignore
     bpy.ops.object.mode_set(mode="OBJECT")
+
+
+def prepare_gltf_structure() -> None:
+    """Prepare structure and data for glTF export."""
+    cu.mkdir(config.pcb_gltf_dir_path)
+    cu.mkdir(config.pcb_gltf_textures_path)
+    obj = bpy.data.objects.get(config.PCB_name)
+    # save PCB dimensions in glTF
+    obj["PCB_X"] = obj.dimensions.x
+    obj["PCB_Y"] = obj.dimensions.y
+    obj["PCB_Z"] = obj.dimensions.z
