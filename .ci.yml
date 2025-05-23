@@ -14,11 +14,11 @@ test:
     - apt-get -qqy update --fix-missing >> logs/debian_install.log
     - apt update && apt -qqy install git pip python3-poetry gerbv inkscape python3.11 pipx >> logs/debian_install.log
     - apt-get -qqy install -t bookworm-backports kicad >> logs/debian_install.log
+    - python3.11 -m pipx install .
     - git clone --quiet https://github.com/antmicro/jetson-orin-baseboard.git
 
   script:
     - export PATH=$HOME/.local/bin:$PATH
-    - python3.11 -m pipx install .
     - cd jetson-orin-baseboard
     - mkdir fab
     - kicad-cli pcb export gerbers --no-protel-ext -o fab/ jetson-orin-baseboard.kicad_pcb

@@ -170,7 +170,11 @@ def do_prepare_build_directory() -> None:
                 matches = sorted(
                     matches,
                     key=lambda x: int(
-                        next(name[0].replace("In", "").split(".Cu")[0] for name in user_layer_names if name[2] in x)
+                        next(
+                            layer["name"].replace("In", "").split(".Cu")[0]
+                            for layer in user_layer_names
+                            if layer["user-name"] in x
+                        )
                     ),
                 )
             if len(matches) == 0:

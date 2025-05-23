@@ -1,12 +1,12 @@
 """Module responsible for stackup read and parse."""
 
 import json
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
 import gerber2blend.modules.config as config
 import os.path
 import logging
 import functools
-
+import re
 
 logger = logging.getLogger()
 
@@ -14,7 +14,7 @@ logger = logging.getLogger()
 class StackupInfo:
     """Stackup information."""
 
-    stackup_data: List[Tuple[str, float, str]] = []
+    stackup_data: List[Dict[str, Any]] = []
     """ Contains layer name <-> layer thickness <-> user layer name mappings
 
     If no stackup.json is provided, this will be empty.
@@ -58,7 +58,7 @@ def _load_stackup_from_file() -> StackupInfo:
 
 
 @functools.cache
-def _parse_stackup_from_file(file_path: str) -> Tuple[float, List[Tuple[str, float, str]]]:
+def _parse_stackup_from_file(file_path: str) -> Tuple[float, List[Dict[str, Any]]]:
     """Parse the stackup data from the given JSON file.
 
     Returns
@@ -67,27 +67,35 @@ def _parse_stackup_from_file(file_path: str) -> Tuple[float, List[Tuple[str, flo
         [1]: List of PCB name <-> thickness pairs
 
     """
-    stackup_data = []
+    stackup_data: List[Dict[str, Any]] = []
     calculated_thickness = config.blendcfg["SETTINGS"]["DEFAULT_BRD_THICKNESS"]
-
+    pattern = re.compile(r"^(dielectric \d+) \(\d+/\d+\)$")
     try:
         logger.debug("Loading stackup data from: %s", file_path)
         if not os.path.exists(file_path):
             logger.warning("Error while reading stackup.json!")
-        else:
-            with open(file_path) as stackup_json_file:
-                stackup_json_data = json.load(stackup_json_file)
+            return calculated_thickness, stackup_data
+        with open(file_path) as stackup_json_file:
+            stackup_json_data = json.load(stackup_json_file)
 
-            stackup_data = [
-                (layer["name"], layer["thickness"], layer["user-name"]) for layer in stackup_json_data["layers"]
-            ]
-            calculated_thickness = 0.0
-            for layer in stackup_json_data["layers"]:
-                if layer["thickness"] is not None:
-                    calculated_thickness += float(layer["thickness"])
+        calculated_thickness = 0.0
+        previous_entry = {"name": "", "thickness": "0", "user-name": ""}
+        for layer in stackup_json_data["layers"]:
+            new_entry = {"name": layer["name"], "thickness": layer["thickness"], "user-name": layer["user-name"]}
+            if new_entry["thickness"]:
+                calculated_thickness += float(new_entry["thickness"])
+            if pattern.match(new_entry["name"]) and pattern.match(previous_entry["name"]):
+                previous_entry["thickness"] += new_entry["thickness"]
+                continue
+            stackup_data.append(new_entry)
+            if match := pattern.match(previous_entry["name"]):
+                previous_entry["name"] = match.group(1)
+            if match := pattern.match(previous_entry["user-name"]):
+                previous_entry["user-name"] = match.group(1)
+            previous_entry = new_entry
 
-            logger.debug("Found stackup data: " + str(stackup_data))
-            logger.debug("Calculated thickness: " + str(calculated_thickness))
+        logger.debug("Found stackup data: " + str(stackup_data))
+        logger.debug("Calculated thickness: " + str(calculated_thickness))
     except Exception as e:
         logger.warning("Error while reading stackup.json!", exc_info=True)
         raise RuntimeError("Could not read stackup.json") from e

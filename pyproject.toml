@@ -29,6 +29,7 @@ gerber2blend = "gerber2blend.gerber2blend:main"
 
 [tool.poetry.dependencies]
 python = "3.11.*"
+cairocffi = "0.6"
 wand = "^0.6.13"
 bpy = "4.1"
 ruamel-yaml = "==0.18.10"

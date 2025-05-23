@@ -294,31 +294,35 @@ def generate_all_layers_list() -> Tuple[List[str], List[float]]:
     else:
         # Find the thickness of "dielectric <N>" entries in the stackup and sort
         # based on their names. This is used as the thickness of the inner layers.
-        stk_in_list = [pair[0] for pair in stk_data if GBR_IN in pair[0]]
+        stk_in_list = [entry["name"] for entry in stk_data if GBR_IN in entry["name"]]
         if len(in_list) != len(stk_in_list):
             raise RuntimeError(
                 f"Stackup layer mismatch between exported gerber files and stackup.json\n"
                 f"Found {len(in_list)} gerber file(s), found {len(stk_in_list)} layer(s) defined in JSON. Aborting!"
             )
-        in_layer_thickness = [pair[1] for pair in stk_data if "dielectric" in pair[0]]
-        cu_layer_thickness = [pair[1] for pair in stk_data if ".Cu" in pair[0]]
+        in_layer_thickness = [entry["thickness"] for entry in stk_data if "dielectric" in entry["name"]]
+        cu_layer_thickness = [entry["thickness"] for entry in stk_data if ".Cu" in entry["name"]]
         sum_cu = sum(cu_layer_thickness)
         in_layer_thickness.reverse()
         front_thickness = [
             sum(
                 [
-                    pair[1]
-                    for pair in stk_data
-                    if isinstance(pair[1], float) and pair[0].startswith("F.") and not pair[0].endswith(".Cu")
+                    entry["thickness"]
+                    for entry in stk_data
+                    if isinstance(entry["thickness"], float)
+                    and entry["name"].startswith("F.")
+                    and not entry["name"].endswith(".Cu")
                 ]
             )
         ]
         back_thickness = [
             sum(
                 [
-                    pair[1]
-                    for pair in stk_data
-                    if isinstance(pair[1], float) and pair[0].startswith("B.") and not pair[0].endswith(".Cu")
+                    entry["thickness"]
+                    for entry in stk_data
+                    if isinstance(entry["thickness"], float)
+                    and entry["name"].startswith("B.")
+                    and not entry["name"].endswith(".Cu")
                 ]
             )
         ]
