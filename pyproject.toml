@@ -31,11 +31,12 @@ gerber2blend = "gerber2blend.gerber2blend:main"
 python = "3.11.*"
 cairocffi = "0.6"
 wand = "^0.6.13"
-bpy = "4.1"
+bpy = "4.4.0"
 ruamel-yaml = "==0.18.10"
 vtracer = "0.6.11"
 marshmallow = "^3.20.1"
 pcb-tools = "0.1.6"
+numpy = ">=1.26,<2.0"
 
 [tool.poetry-dynamic-versioning]
 enable = true

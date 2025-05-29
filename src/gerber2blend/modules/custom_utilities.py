@@ -211,7 +211,7 @@ def export_to_gltf(gltf_file_path: str, textures_path: str) -> None:
         export_extras=True,
         export_apply=True,
         export_texture_dir=textures_path,
-        export_draco_mesh_compression_enable=False,
+        export_draco_mesh_compression_enable=True,
     )
 
 
