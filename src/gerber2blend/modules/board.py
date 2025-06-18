@@ -50,7 +50,9 @@ class Board(gerber2blend.core.module.Module):
             prepare_gltf_structure()
             cu.save_pcb_blend(config.pcb_blend_path, apply_transforms=True)
             bpy.ops.wm.open_mainfile(filepath=config.pcb_blend_path)
-            cu.export_to_gltf(config.pcb_gltf_file_path, config.pcb_gltf_textures_path)
+            cu.export_to_gltf(config.pcb_gltf_file_path)
+            if config.blendcfg["SETTINGS"]["TEXTURES_FORMAT"] == "KTX2":
+                cu.convert_ktx2(config.pcb_gltf_file_path)
 
 
 ########################################
@@ -569,7 +571,6 @@ def clean_bool_diff_artifacts(pcb: bpy.types.Object) -> None:
 def prepare_gltf_structure() -> None:
     """Prepare structure and data for glTF export."""
     cu.mkdir(config.pcb_gltf_dir_path)
-    cu.mkdir(config.pcb_gltf_textures_path)
     obj = bpy.data.objects.get(config.PCB_name)
     # save PCB dimensions in glTF
     obj["PCB_X"] = obj.dimensions.x

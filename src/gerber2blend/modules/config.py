@@ -128,7 +128,6 @@ def configure_paths(arguments: argparse.Namespace) -> None:
     global pcb_blend_path
     global pcb_gltf_file_path
     global pcb_gltf_dir_path
-    global pcb_gltf_textures_path
     global mat_blend_path
     global mat_library_path
     global model_library_path
@@ -146,14 +145,12 @@ def configure_paths(arguments: argparse.Namespace) -> None:
         PCB_name = fio.read_pcb_name(prj_path)
         pcb_blend_path = fab_path + PCB_name + ".blend"
         pcb_gltf_dir_path = fab_path + "gltf/"
-        pcb_gltf_textures_path = pcb_gltf_dir_path + "gltf_textures/"
         pcb_gltf_file_path = pcb_gltf_dir_path + PCB_name + ".gltf"
     else:
         PCB_name = arguments.blend_path.split("/")[-1].replace(".blend", "")
         pcb_blend_path = path.abspath(arguments.blend_path)
-        parent_dir_path = "/".join(arguments.blend_path.split("/")[:-1])
-        pcb_gltf_dir_path = parent_dir_path + "/gltf/"
-        pcb_gltf_textures_path = parent_dir_path + "/gltf/gltf_textures/"
+        parent_dir_path = "/".join(arguments.blend_path.split("/")[:-1]) + "/"
+        pcb_gltf_dir_path = parent_dir_path + "gltf/"
         pcb_gltf_file_path = pcb_gltf_dir_path + PCB_name + ".gltf"
 
     png_path = fab_path + "PNG/"

@@ -55,6 +55,21 @@ def get_schema_field(schema_class: type[BaseSchema], field_name: str) -> fields.
         raise RuntimeError(f"Schema field '{field_name}' could not be found in {schema_class.__name__}")
 
 
+class FileFormat(fields.Field):
+    """Custom Marshmallow field for validating file formats belonging to predefined set."""
+
+    def __init__(self, formats: Set[str] = set(), *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.formats = formats
+
+    def _deserialize(self, value: str, attr: Any, data: Any, **kwargs: Any) -> str:
+        if isinstance(value, str):
+            if value in self.formats:
+                return value
+
+        raise ValidationError(f"'{value}' is not a valid file format (accepted formats: {', '.join(self.formats)})")
+
+
 class SettingsSchema(BaseSchema):
     PRJ_EXTENSION = fields.String()
     FAB_DIR = fields.String()
@@ -64,6 +79,7 @@ class SettingsSchema(BaseSchema):
     SOLDERMASK = Color(presets={"Black", "White", "Green", "Blue", "Red"}, allow_none=True)
     USE_INKSCAPE = fields.Bool()
     GENERATE_GLTF = fields.Bool()
+    TEXTURES_FORMAT = FileFormat({"PNG", "KTX2"})
 
 
 class GerberFilenamesSchema(BaseSchema):

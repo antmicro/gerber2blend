@@ -105,15 +105,16 @@ The resulting PCB model file, `<project-name>.blend`, is saved in `[path to proj
 
 ### glTF format
 
-`gerber2blend` allows also to export PCB model into glTF format, when defined `GENERATE_GLTF` in `blendcfg`. `.blend` model of PCB is also saved then however with materials slightly modified to support glTF export. Model in glTF format is saved in `[path to project repository]/fab/gltf/`.
+`gerber2blend` allows to export PCB model in glTF format. 
+To enable it, set `GENERATE_GLTF` setting to `true` in `blendcfg`.
+Model in glTF format is saved in `[path to project repository]/fab/gltf/`.
+`gerber2blend` supports exporting glTF textures in `.png` and `.ktx2` formats. To change texture format, edit `TEXTURES_FORMAT` setting in `blendcfg`.
 
-```{note}
-After generating model in glTF format the script may end up with a Segmentation Fault.
-This is already a known bug caused by `bpy` dependency. 
-The error does not influence `gerber2blend` operations and their outputs. 
-It has been confirmed that the bug and is solved with `bpy=4.3`.
-The gerber2blend project and dependent projects will be updated to make them use the newer `bpy`.
+```{warning}
+Running `gerber2blend` with this setting will generate `.blend` model as well, but with glTF-compatible shaders and simplified mesh geometry.
+This will overwrite any existing `.blend` file.
 ```
+
 
 ### Additional CLI arguments
 

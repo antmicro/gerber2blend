@@ -6,17 +6,16 @@ include:
 test:
   stage: test
   image: 'debian:bookworm'
+  before_get_sources:
+    - export PATH=$HOME/.local/bin:$PATH
+    - echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
+    - apt-get -qqy update --fix-missing >/dev/null
+    - apt -qqy install git pip python3-poetry gerbv inkscape python3.11 pipx >/dev/null
+    - apt-get -qqy install -t bookworm-backports kicad >/dev/null
   before_script:
     - export PATH=$HOME/.local/bin:$PATH
-    - mkdir -p logs
-    - echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list
-    - apt-get -qqy update >> logs/debian_install.log
-    - apt-get -qqy update --fix-missing >> logs/debian_install.log
-    - apt update && apt -qqy install git pip python3-poetry gerbv inkscape python3.11 pipx >> logs/debian_install.log
-    - apt-get -qqy install -t bookworm-backports kicad >> logs/debian_install.log
     - python3.11 -m pipx install .
     - git clone --quiet https://github.com/antmicro/jetson-orin-baseboard.git
-
   script:
     - export PATH=$HOME/.local/bin:$PATH
     - cd jetson-orin-baseboard
@@ -26,6 +25,7 @@ test:
     - gerber2blend
   artifacts:
     paths:
+      - logs
       - jetson-orin-baseboard/assets
       - jetson-orin-baseboard/doc
       - jetson-orin-baseboard/img
@@ -36,3 +36,31 @@ test:
       - jetson-orin-baseboard/README.md
       - jetson-orin-baseboard/LICENSE
       - jetson-orin-baseboard/blendcfg.yaml
+
+test-gltf:
+  extends: test
+  stage: test
+  tags: ["scalerunner-gpu"]
+  variables:
+    SCALENODE_DEVICE: "nvidia"
+  before_script:
+    - export PATH=$HOME/.local/bin:$PATH
+    - mkdir -p logs
+    - apt -qqy install wget npm >> logs/debian_install.log
+    - wget https://github.com/KhronosGroup/KTX-Software/releases/download/v4.4.0/KTX-Software-4.4.0-Linux-x86_64.deb >> logs/debian_install.log
+    - dpkg --install KTX-Software-4.4.0-Linux-x86_64.deb >> logs/debian_install.log
+    - wget -qO- https://raw.githubusercontent.com/creationix/nvm/v0.39.2/install.sh | bash
+    - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
+    - -f .nvmrc  && nvm install || nvm install 22
+    - nvm use 22
+    - npm install -g npm@10.9.2 @gltf-transform/cli @gltf-transform/core @gltf-transform/extensions @gltf-transform/functions
+    - gltf-transform --version
+    - python3.11 -m pipx install .
+    - git clone --quiet https://github.com/antmicro/jetson-orin-baseboard.git
+  script:
+    - export PATH=$HOME/.local/bin:$PATH
+    - cd jetson-orin-baseboard
+    - mkdir fab
+    - kicad-cli pcb export gerbers --no-protel-ext -o fab/ jetson-orin-baseboard.kicad_pcb
+    - kicad-cli pcb export drill --format gerber --excellon-separate-th -o fab/ jetson-orin-baseboard.kicad_pcb
+    - gerber2blend -c gltf

@@ -22,6 +22,7 @@ from gerber2blend.modules.config import (
 )
 import logging
 from typing import List, Tuple, Literal
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -274,6 +275,7 @@ def bake_texture(image_node: bpy.types.Node, nodes: bpy.types.Nodes, bake_type: 
     image.save()
     image.pack()
     cu.make_image_paths_relative(image)
+    Path("." + image.filepath).unlink()
     nodes.active = None  # type:ignore
     image_node.select = False
 
@@ -292,10 +294,10 @@ def make_gltf_compatibile_shader(
     object_with_texture.select_set(True)
     nodes = material.node_tree.nodes
     links = material.node_tree.links
-    color_image_node = create_image_node(f"gltf_{config.PCB_name}_{material.name}_color", nodes, img_res, False)
-    metallic_image_node = create_image_node(f"gltf_{config.PCB_name}_{material.name}_metallic", nodes, img_res)
-    roughness_image_node = create_image_node(f"gltf_{config.PCB_name}_{material.name}_roughness", nodes, img_res)
-    normal_image_node = create_image_node(f"gltf_{config.PCB_name}_{material.name}_normal", nodes, img_res)
+    color_image_node = create_image_node(f"{config.PCB_name}_{material.name}_color", nodes, img_res, False)
+    metallic_image_node = create_image_node(f"{config.PCB_name}_{material.name}_metallic", nodes, img_res)
+    roughness_image_node = create_image_node(f"{config.PCB_name}_{material.name}_roughness", nodes, img_res)
+    normal_image_node = create_image_node(f"{config.PCB_name}_{material.name}_normal", nodes, img_res)
     for node in nodes:
         if node.type == "OUTPUT_MATERIAL":
             mat_output_node = node

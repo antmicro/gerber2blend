@@ -25,4 +25,4 @@ htmlcov
 build/
 *.egg-info/
 
-
+gltf-tools/node_modules

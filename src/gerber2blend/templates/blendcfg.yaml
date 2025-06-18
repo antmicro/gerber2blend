@@ -10,6 +10,7 @@ default:
                                   # for custom color, type pair of hex values: AABBCC, DDEEFF (colors for areas with and without copper beneath)
     USE_INKSCAPE: True            # use when board has overlapping holes footprints, sometimes fixes mesh generation
     GENERATE_GLTF: False          # if True, converts shaders to glTF-compatible format and exports generated board to glTF format
+    TEXTURES_FORMAT: KTX2         # converts shaders for glTF model to specified format; currently supported formats: KTX2, PNG
 
   GERBER_FILENAMES: 
     EDGE_CUTS: "*-Edge_Cuts.gbr"
@@ -43,3 +44,4 @@ gltf:
     GENERATE_GLTF: True
   EFFECTS:
     IGNORE_VIAS: True
+    SOLDER: False
