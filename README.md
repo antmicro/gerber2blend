@@ -58,13 +58,13 @@ For more information regarding Blender supported by the `gerber2blend` visit the
 
 `gerber2blend` supports exporting PCB model to glTF format. To use that functionality you need [KTX-Software](https://github.com/KhronosGroup/KTX-Software/tree/main) and `gltf-transform` `npm` package installed:
 
-    ```bash
-    wget https://github.com/KhronosGroup/KTX-Software/releases/download/v4.4.0/KTX-Software-4.4.0-Linux-x86_64.deb
-    sudo dpkg --install KTX-Software-4.4.0-Linux-x86_64.deb
-    sudo apt install npm
-    nvm use 22
-    npm install -g @gltf-transform/cli @gltf-transform/core @gltf-transform/extensions @gltf-transform/functions
-    ```
+```bash
+wget https://github.com/KhronosGroup/KTX-Software/releases/download/v4.4.0/KTX-Software-4.4.0-Linux-x86_64.deb
+sudo dpkg --install KTX-Software-4.4.0-Linux-x86_64.deb
+sudo apt install npm
+nvm use 22
+npm install -g @gltf-transform/cli @gltf-transform/core @gltf-transform/extensions @gltf-transform/functions
+```
 
 ```{warning}
 `gltf-transform` requires Node version >= 22.
