@@ -394,6 +394,7 @@ def get_alignment_layers(color: str) -> str:
     return f"'{gbr_path}{GBR_F_MASK}.gbr' {fg}={color} '{gbr_path}{GBR_B_MASK}.gbr' {fg}={color} \
                 '{gbr_path}{GBR_F_FAB}.gbr' {fg}={color} '{gbr_path}{GBR_B_FAB}.gbr' {fg}={color} \
                 '{gbr_path}{GBR_F_SILK}.gbr' {fg}={color} '{gbr_path}{GBR_B_SILK}.gbr' {fg}={color} \
+                '{gbr_path}{GBR_F_CU}.gbr' {fg}={color} '{gbr_path}{GBR_B_CU}.gbr' {fg}={color} \
                 '{gbr_path}{GBR_EDGE_CUTS}.gbr' {fg}={color}"
 
 
