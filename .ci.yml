@@ -51,7 +51,7 @@ test-gltf:
     - dpkg --install KTX-Software-4.4.0-Linux-x86_64.deb >> logs/debian_install.log
     - wget -qO- https://raw.githubusercontent.com/creationix/nvm/v0.39.2/install.sh | bash
     - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
-    - -f .nvmrc  && nvm install || nvm install 22
+    - nvm install 22
     - nvm use 22
     - npm install -g npm@10.9.2 @gltf-transform/cli @gltf-transform/core @gltf-transform/extensions @gltf-transform/functions
     - gltf-transform --version
