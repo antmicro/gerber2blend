@@ -53,7 +53,7 @@ test-gltf:
     - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
     - nvm install 22
     - nvm use 22
-    - npm install -g npm@10.9.2 @gltf-transform/cli @gltf-transform/core @gltf-transform/extensions @gltf-transform/functions
+    - npm install -g npm@10.9.2 @gltf-transform/cli@4.2.0 @gltf-transform/core@4.2.0 @gltf-transform/extensions@4.2.0 @gltf-transform/functions@4.2.0
     - gltf-transform --version
     - python3.11 -m pipx install .
     - git clone --quiet https://github.com/antmicro/jetson-orin-baseboard.git
