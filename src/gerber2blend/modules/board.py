@@ -474,6 +474,7 @@ def prepare_mesh(name: str, svg_path: str, clean: bool, height: float, scale: fl
     """Prepare mesh from imported curve."""
     bpy.ops.object.select_all(action="DESELECT")
     obj = import_svg(name, svg_path, scale)
+
     if isinstance(obj, bpy.types.Object):
         obj.select_set(True)
         bpy.context.view_layer.objects.active = obj
@@ -489,7 +490,14 @@ def prepare_mesh(name: str, svg_path: str, clean: bool, height: float, scale: fl
             clean_outline(obj)
         extrude_mesh(obj, height)
         obj.data.name = name + "_mesh"
+
+        if not len(obj.data.polygons) and name == "PCB_layer1":  # type:ignore
+            raise RuntimeError(
+                "PCB outline object is empty, aborting. Check if PCB outline is malformed or any holes or cutouts are defined on Edge.Cuts layer in KiCad design."
+            )
+
         logger.info("Mesh for " + name + " created.")
+
     else:
         logger.warning("No mesh created for " + name + ".")
         return None
