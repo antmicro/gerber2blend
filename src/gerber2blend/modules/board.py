@@ -5,11 +5,11 @@ import bpy
 import logging
 
 from mathutils import Vector
-from os import listdir, path
 from typing import List, Tuple, Optional, cast, Iterable, Literal
-
+from pathlib import Path
 import gerber2blend.core.module
 import gerber2blend.modules.config as config
+import gerber2blend.modules.file_io as fio
 import gerber2blend.modules.custom_utilities as cu
 import gerber2blend.modules.stackup as stk
 
@@ -38,8 +38,8 @@ class Board(gerber2blend.core.module.Module):
 
     def execute(self) -> None:
         """Execute Board module."""
-        if path.isfile(config.pcb_blend_path) and not config.args.regenerate:
-            logger.info(f"Board model already exists at {config.pcb_blend_path}. ")
+        if config.pcb_blend_path.is_file() and not config.args.regenerate:
+            logger.info(f"Board model already exists at {str(config.pcb_blend_path)}.")
             logger.info("Exiting Board module. Run with -r to regenerate the model.")
             return
         logger.info("Generating new PCB mesh.")
@@ -49,10 +49,10 @@ class Board(gerber2blend.core.module.Module):
         if config.blendcfg["SETTINGS"]["GENERATE_GLTF"]:
             prepare_gltf_structure()
             cu.save_pcb_blend(config.pcb_blend_path, apply_transforms=True)
-            bpy.ops.wm.open_mainfile(filepath=config.pcb_blend_path)
-            cu.export_to_gltf(config.pcb_gltf_file_path)
+            bpy.ops.wm.open_mainfile(filepath=str(config.pcb_blend_path))
+            cu.export_to_gltf(config.pcb_gltf_file_path, config.pcb_gltf_textures_path)
             if config.blendcfg["SETTINGS"]["TEXTURES_FORMAT"] == "KTX2":
-                cu.convert_ktx2(config.pcb_gltf_file_path)
+                cu.convert_ktx2(config.pcb_gltf_file_path, config.pcb_gltf_textures_path)
 
 
 ########################################
@@ -74,7 +74,7 @@ def make_board() -> bpy.types.Object:
     # preparing meshes for outline and holes
     pcb: bpy.types.Object | None = prepare_mesh(
         "PCB_layer1",
-        config.svg_path + GBR_EDGE_CUTS + ".svg",
+        (config.svg_path / GBR_EDGE_CUTS).with_suffix(".svg"),
         True,
         0.0,
         config.pcbscale_gerbv,
@@ -87,7 +87,7 @@ def make_board() -> bpy.types.Object:
 
     pth = prepare_mesh(
         "pth",
-        config.svg_path + GBR_PTH + ".svg",
+        (config.svg_path / GBR_PTH).with_suffix(".svg"),
         False,
         0.2,
         config.pcbscale_gerbv,
@@ -95,7 +95,7 @@ def make_board() -> bpy.types.Object:
 
     npth = prepare_mesh(
         "npth",
-        config.svg_path + GBR_NPTH + ".svg",
+        (config.svg_path / GBR_NPTH).with_suffix(".svg"),
         False,
         0.2,
         config.pcbscale_gerbv,
@@ -270,19 +270,20 @@ def generate_all_layers_list() -> Tuple[List[str], List[float]]:
         return all_list, all_layer_thickness
 
     # Collect all inner layer PNG files from the fabrication data folder
-    in_list = sorted(
+    in_list_sorted = sorted(
         list(
             filter(
-                lambda f: f.startswith(GBR_IN) and f.endswith(".png"),
-                listdir(config.png_path),
+                lambda f: f.stem.startswith(GBR_IN) and f.suffix == ".png",
+                config.png_path.iterdir(),
             )
         ),
-        key=lambda x: int(x[len(GBR_IN) :].replace(".png", "")),
+        key=lambda x: int(x.stem[len(GBR_IN) :]),
         reverse=True,
     )
+    in_list = [file.name for file in in_list_sorted]
     if len(in_list) == 0:
         logger.warning(
-            f"Could not find any converted inner layer PNGs in {config.png_path}!\n"
+            f"Could not find any converted inner layer PNGs in {str(config.png_path)}!\n"
             f"Verify if the inner layer gerbers are present and specified "
             f"with GERBER_FILENAMES in the blendcfg.yaml file."
         )
@@ -439,19 +440,19 @@ def extrude_mesh(obj: bpy.types.Object, height: float) -> None:
 
 
 def import_svg(
-    name: str, filepth: str, scale: float, join: bool = True
+    name: str, filepth: Path, scale: float, join: bool = True
 ) -> Optional[bpy.types.Object | bpy.types.Collection]:
     """Import curve from SVG vector file."""
-    if not path.exists(filepth):
+    if not filepth.exists():
         return None
-    svgname = filepth.split("/")[-1]
+    svgname = filepth.name
     bpy.ops.import_curve.svg(filepath=str(filepth))
     col = bpy.data.collections[svgname]
     for obj in col.all_objects:
         bpy.context.view_layer.objects.active = obj
         obj.select_set(True)
     curve_count = len(bpy.context.selected_objects)  # type:ignore
-    logger.info("Importing SVG from " + svgname + " (curve count: " + str(curve_count) + ")")
+    logger.info(f"Importing SVG from {svgname} (curve count: {str(curve_count)})")
     if curve_count != 0:
         bpy.ops.object.convert(target="MESH")
         bpy.ops.transform.resize(value=(scale, scale, scale))  # type: ignore
@@ -470,7 +471,7 @@ def import_svg(
     return None
 
 
-def prepare_mesh(name: str, svg_path: str, clean: bool, height: float, scale: float) -> Optional[bpy.types.Object]:
+def prepare_mesh(name: str, svg_path: Path, clean: bool, height: float, scale: float) -> Optional[bpy.types.Object]:
     """Prepare mesh from imported curve."""
     bpy.ops.object.select_all(action="DESELECT")
     obj = import_svg(name, svg_path, scale)
@@ -535,8 +536,8 @@ def solder_single(obj: bpy.types.Object) -> None:
 
 def prepare_solder(base_name: str, scale: float) -> Optional[bpy.types.Object]:
     """Prepare Solder mesh for single board side."""
-    input_file = config.svg_path + base_name + ".svg"
-    input_file_fixer = config.svg_path + base_name + "_fixer.svg"
+    input_file = (config.svg_path / base_name).with_suffix(".svg")
+    input_file_fixer = (config.svg_path / f"{base_name}_fixer").with_suffix(".svg")
     bpy.ops.object.select_all(action="DESELECT")
 
     col = import_svg(base_name, input_file, scale, False)
@@ -578,7 +579,8 @@ def clean_bool_diff_artifacts(pcb: bpy.types.Object) -> None:
 
 def prepare_gltf_structure() -> None:
     """Prepare structure and data for glTF export."""
-    cu.mkdir(config.pcb_gltf_dir_path)
+    fio.mkdir(config.pcb_gltf_dir_path)
+    fio.mkdir(config.pcb_gltf_textures_path)
     obj = bpy.data.objects.get(config.PCB_name)
     # save PCB dimensions in glTF
     obj["PCB_X"] = obj.dimensions.x

@@ -3,9 +3,10 @@
 import logging
 from shutil import copyfile
 from typing import Any, Dict, List
-import ruamel.yaml
+import ruamel.yaml  # type: ignore
 from marshmallow import ValidationError  # type: ignore
 from gerber2blend.core.schema import BaseSchema
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +17,9 @@ BLENDCFG_FILENAME = "blendcfg.yaml"
 
 
 class BlendcfgValidationError(Exception):
-    """
-    Blendcfg validation error custom exception.
-    Accepts strings and marshmallow ValidationError lists or dicts.
-    """
+    """Blendcfg validation error custom exception. Accepts strings and marshmallow ValidationError lists or dicts."""
 
-    def __init__(self, errors: List[Any] | Dict[Any, Any] | str) -> None:
+    def __init__(self, errors: List[Any] | Dict[Any, Any] | str) -> None:  # noqa:D107
         self.errors = errors
         if isinstance(errors, str):
             msg = errors
@@ -47,9 +45,9 @@ class BlendcfgValidationError(Exception):
         return "\n".join(lines)
 
 
-def open_blendcfg(path: str, config_preset: str) -> Dict[str, Any]:
+def open_blendcfg(prj_path: Path, config_preset: str) -> Dict[str, Any]:
     """Open configuration file from the specified path."""
-    project_cfg_path = path + BLENDCFG_FILENAME
+    project_cfg_path: Path = prj_path / BLENDCFG_FILENAME
 
     yaml = ruamel.yaml.YAML(typ="safe")
     yaml.indent(mapping=2, sequence=4, offset=2)
@@ -58,7 +56,7 @@ def open_blendcfg(path: str, config_preset: str) -> Dict[str, Any]:
         logger.info(f"Loaded configuration file: {project_cfg_path}")
 
     if not isinstance(project_cfg, dict):
-        raise BlendcfgValidationError(f"Invalid config loaded.")
+        raise BlendcfgValidationError("Invalid config loaded.")
 
     if not config_preset:
         if "default" not in project_cfg:
@@ -75,29 +73,28 @@ def open_blendcfg(path: str, config_preset: str) -> Dict[str, Any]:
 def validate_blendcfg(raw_config: Dict[str, Any], schema: BaseSchema) -> Dict[str, Any]:
     """Validate raw config (string) using defined schema."""
     try:
-        config = schema.load(raw_config)
-        return config
+        return schema.load(raw_config)
     except ValidationError as e:
-        raise BlendcfgValidationError(e.messages)
+        raise BlendcfgValidationError(e.messages) from e
 
 
-def copy_blendcfg(file_path: str, src_path: str) -> None:
+def copy_blendcfg(file_path: Path, src_path: Path) -> None:
     """Copy blendcfg to project's directory."""
-    logger.warning(f"Copying default config from template.")
-    copyfile(src_path + "/templates/" + BLENDCFG_FILENAME, file_path + BLENDCFG_FILENAME)
+    logger.warning("Copying default config from template.")
+    copyfile(src_path / "templates" / BLENDCFG_FILENAME, file_path / BLENDCFG_FILENAME)
 
 
-def merge_blendcfg(file_path: str, src_path: str, overwrite: bool = False) -> None:
-    """
-    Merge template blendcfg with local one in project's directory and save changes to file.
+def merge_blendcfg(file_path: Path, src_path: Path, overwrite: bool = False) -> None:
+    """Merge template blendcfg with local one in project's directory and save changes to file.
+
     When overwrite is enabled, values set in local config will be replaced with the ones in template.
     When overwrite is disabled, settings that are missing in the local config will be added from template
     (serves as a fallback in situations when required config keys are missing to prevent crashes).
     """
     prompt = " (overwriting local values)" if overwrite else ""
     logger.warning(f"Merging default config from template with local one found{prompt}.")
-    project_cfg_path = file_path + "/" + BLENDCFG_FILENAME
-    template_cfg_path = src_path + "/templates/" + BLENDCFG_FILENAME
+    project_cfg_path = file_path / BLENDCFG_FILENAME
+    template_cfg_path = src_path / "templates" / BLENDCFG_FILENAME
 
     yaml = ruamel.yaml.YAML()
     yaml.indent(mapping=2, sequence=4, offset=2)
@@ -112,7 +109,7 @@ def merge_blendcfg(file_path: str, src_path: str, overwrite: bool = False) -> No
     else:
         cfg = update_yamls(template_cfg, project_cfg)
 
-    merged_cfg = project_cfg = file_path + "/" + BLENDCFG_FILENAME
+    merged_cfg = project_cfg = file_path / BLENDCFG_FILENAME
     with open(merged_cfg, "w") as file:
         yaml.dump(cfg, file)
 

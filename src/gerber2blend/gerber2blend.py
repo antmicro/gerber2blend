@@ -4,15 +4,14 @@ import argparse
 import importlib
 import inspect
 import logging
-import os
 import pkgutil
 import sys
-from os import path
 from typing import Any, Optional
 import gerber2blend.core.blendcfg as blendcfg
 import gerber2blend.core.log
 import gerber2blend.core.module
 import gerber2blend.modules.config as config
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -62,13 +61,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-R",
         "--reset-config",
-        help="reset local config settings to the values from the template and exit. Copy blendcfg.yaml to CWD instead if there is no CWD config file found.",
+        help=(
+            "reset local config settings to the values from the template and exit."
+            "Copy blendcfg.yaml to CWD instead if there is no CWD config file found."
+        ),
         action="store_true",
     )
     parser.add_argument(
         "-u",
         "--update-config",
-        help="update local config settings with the additional ones found in the template and exit. Copy blendcfg.yaml to CWD instead if there is no CWD config file found.",
+        help=(
+            "update local config settings with the additional ones found in the template and exit."
+            "Copy blendcfg.yaml to CWD instead if there is no CWD config file found."
+        ),
         action="store_true",
     )
 
@@ -78,8 +83,8 @@ def parse_args() -> argparse.Namespace:
 def import_python_submodules() -> None:
     """Import all available extension Python submodules from the environment."""
     # Look in the `modules` directory under site-packages
-    modules_path = os.path.join(os.path.dirname(__file__), "modules")
-    for _, module_name, _ in pkgutil.walk_packages([modules_path], prefix="gerber2blend.modules."):
+    modules_path = Path(__file__).parent / "modules"
+    for _, module_name, _ in pkgutil.walk_packages([str(modules_path)], prefix="gerber2blend.modules."):
         logger.debug("Importing Python submodule: %s", module_name)
         try:
             importlib.import_module(module_name)
@@ -159,7 +164,7 @@ def main() -> None:
     args = parse_args()
     gerber2blend.core.log.set_logging(args.debug)
 
-    if args.blend_path and not path.isfile(args.blend_path):
+    if args.blend_path and not Path(args.blend_path).is_file():
         logger.error(f"Model not found at path: {args.blend_path}")
         exit(1)
 

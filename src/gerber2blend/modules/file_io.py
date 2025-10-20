@@ -6,7 +6,7 @@ import sys
 import logging
 import gerber2blend.modules.config as config
 from pathlib import Path
-from typing import Optional, List, Callable, Generator, List, Any
+from typing import Optional, List, Callable, Generator, Any
 from io import TextIOWrapper
 from contextlib import contextmanager
 
@@ -15,44 +15,41 @@ logger = logging.getLogger(__name__)
 DEFAULT_PCB_NAME = "unknownpcb"
 
 
-def touch(file_path: str) -> None:
-    """Create an empty file at the given path.
+def mkdir(file_path: Path) -> None:
+    """Create a directory at the specified path.
 
-    Args:
-    ----
-        file_path: path where to create the file
-
+    Wraps any errors with a nicer error exception.
     """
-    with open(file_path, "w"):
-        # intentionally empty
-        pass
+    try:
+        if not file_path.exists():
+            file_path.mkdir()
+    except OSError as e:
+        raise RuntimeError(f"Could not create folder at path {str(file_path)}: {repr(e)}") from e
 
 
-def read_pcb_name_from_prj(path: str, extension: str) -> str:
-    """Try reading the PCB name from a project file at `path` using extension specified in config.
+def read_pcb_name_from_prj(prj_path: Path, extension: str) -> str:
+    """Try reading the PCB name from a project file at `prj_path` using extension specified in config.
 
-    This function will fail and throw a `RuntimeError` if `path` is
-    not a valid project directory.
+    This function will fail and throw a `RuntimeError` if `prj_path` is not a valid project directory.
     """
-    files = os.listdir(path)
-    project_file = [f for f in files if f.endswith(extension)]
+    project_file = [file for file in prj_path.iterdir() if file.suffix == extension]
 
     if len(project_file) != 1:
         logger.error(f"There should be only one {extension} file in project main directory!")
         logger.error("Found: " + repr(project_file))
-        raise RuntimeError(f"Expected single {extension} file in current directory, got %d" % len(project_file))
+        raise RuntimeError(f"Expected single {extension} file in current directory, got {len(project_file)}")
 
-    name = Path(project_file[0]).stem
-    logger.debug("PCB name: %s", name)
-    return name
+    pcb_name = project_file[0].stem
+    logger.debug(f"PCB name: {pcb_name}")
+    return pcb_name
 
 
-def read_pcb_name(path: str) -> str:
+def read_pcb_name(prj_path: Path) -> str:
     """Read the PCB name from the current EDA project."""
     extension = config.blendcfg["SETTINGS"]["PRJ_EXTENSION"]
     if extension != "":
         try:
-            return read_pcb_name_from_prj(path, extension)
+            return read_pcb_name_from_prj(prj_path, extension)
         except Exception:
             logger.warning(f"Failed to find {extension} file!")
         # further logic can be added in a similar way as above
@@ -64,8 +61,7 @@ def read_pcb_name(path: str) -> str:
 
 @contextmanager
 def stdout_redirected(to: str = os.devnull) -> Generator[None, Any, None]:
-    """
-    Redirect the standard output to dev/null.
+    """Redirect the standard output to dev/null.
 
     This context manager temporarily redirects `sys.stdout` to a specified target file or stream.
     During the redirection, any output written to `print()` or `sys.stdout` will be written to the target
@@ -73,7 +69,6 @@ def stdout_redirected(to: str = os.devnull) -> Generator[None, Any, None]:
 
     https://blender.stackexchange.com/questions/6119/suppress-output-of-python-operators-bpy-ops
     """
-
     fd = sys.stdout.fileno()
 
     def _redirect_stdout(to: TextIOWrapper) -> None:
@@ -94,29 +89,29 @@ def stdout_redirected(to: str = os.devnull) -> Generator[None, Any, None]:
 
 
 def import_from_blendfile(
-    blendfile: str, data_type: str, filter_func: Callable[[str], bool] = lambda x: True
+    blendfile: Path, data_type: str, filter_func: Callable[[str], bool] = lambda x: True
 ) -> List[str]:
     """Import data from another Blender file."""
     try:
-        with bpy.data.libraries.load(blendfile) as (data_from, data_to):
+        with bpy.data.libraries.load(str(blendfile)) as (data_from, data_to):
             filtered_data = list(filter(filter_func, getattr(data_from, data_type)))
             setattr(data_to, data_type, filtered_data)
-            logger.debug("found data " + data_type + " in file " + blendfile)
+            logger.debug(f"found data {data_type} in file {str(blendfile)}")
             return filtered_data
     except Exception:
-        logger.error("failed to open blend file " + blendfile)
+        logger.error(f"failed to open blend file {str(blendfile)}")
     return []
 
 
 def get_data_from_blendfile(
-    blendfile: str, data_type: str, filter_func: Callable[[str], bool] = lambda x: True
+    blendfile: Path, data_type: str, filter_func: Callable[[str], bool] = lambda x: True
 ) -> Optional[List[str]]:
     """List data from another Blender file without including it in current file."""
     result = None
     try:
-        with bpy.data.libraries.load(blendfile) as (data_from, data_to):
+        with bpy.data.libraries.load(str(blendfile)) as (data_from, data_to):
             result = list(filter(filter_func, getattr(data_from, data_type)))
-            logger.debug("found data " + data_type + " in file " + blendfile)
+            logger.debug(f"found data {data_type} in file {str(blendfile)}")
     except Exception:
-        logger.error("failed to open blend file " + blendfile)
+        logger.error(f"failed to open blend file {str(blendfile)}")
     return result

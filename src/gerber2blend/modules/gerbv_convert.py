@@ -16,7 +16,6 @@ import gerber2blend.core.module
 from gerber2blend.core.schema import GerberFilenamesSchema, get_schema_field
 import gerber2blend.modules.config as config
 import gerber2blend.modules.file_io as fio
-import gerber2blend.modules.custom_utilities as cu
 import gerber2blend.modules.stackup as stackup
 from gerber2blend.modules.config import (
     GBR_IN,
@@ -85,9 +84,9 @@ def do_prepare_build_directory() -> None:
     are replaced with a dummy.
     """
     # Prepare paths; create subdirectories for intermediate steps files
-    cu.mkdir(config.svg_path)
-    cu.mkdir(config.png_path)
-    cu.mkdir(config.gbr_path)
+    fio.mkdir(config.svg_path)
+    fio.mkdir(config.png_path)
+    fio.mkdir(config.gbr_path)
 
     # Remove old temp files
     remove_files_with_ext(config.png_path, ".png")
@@ -130,24 +129,19 @@ def do_prepare_build_directory() -> None:
         if v is None:
             # Only makes sense to do this with singular gerber files
             if k not in gerbs_with_many_files:
-                new_path = config.gbr_path + gerb_file_renames[k] + ".gbr"
-                logger.info("Gerber file %s missing. Replacing with empty file: %s", k, new_path)
-                fio.touch(new_path)
+                new_path = (config.gbr_path / gerb_file_renames[k]).with_suffix(".gbr")
+                logger.info(f"Gerber file {k} missing. Replacing with empty file: {new_path}")
+                new_path.touch()
             continue
 
-        logger.info("Looking up %s in %s..", v, config.fab_path)
-        fpath = os.path.join(config.fab_path, v)
-        matches = glob.glob(fpath)
+        logger.info(f"Looking up {v} in {config.fab_path}...")
+        fpath = config.fab_path / v
+        matches = glob.glob(str(fpath))
         if len(matches) == 0:
             if not get_schema_field(GerberFilenamesSchema, k).required:
                 logger.warning(f"Did not find optional {k} in path: {config.fab_path}")
             else:
-                logger.error(
-                    "Could not find required Gerber %s with pattern: %s in %s/ directory!",
-                    k,
-                    v,
-                    gbr_dir,
-                )
+                logger.error(f"Could not find required Gerber {k} with pattern: {v} in {gbr_dir}/ directory!")
                 gerbers_missing = True
             continue
 
@@ -162,7 +156,7 @@ def do_prepare_build_directory() -> None:
                         matches,
                         key=lambda x: int(x.split("/")[-1].split("-In")[-1].replace("_Cu.gbr", "")),
                     )
-                except:
+                except Exception:
                     logger.warning("Inner layers don't use default readable naming scheme. Sorting alphabetically.")
                     logger.info("To ensure order of inner layers, please supply a stackup file.")
                     matches = sorted(matches)
@@ -178,26 +172,21 @@ def do_prepare_build_directory() -> None:
                     ),
                 )
             if len(matches) == 0:
-                logger.error(
-                    "Could not find required Gerber %s with pattern: %s in %s/ directory!",
-                    k,
-                    v,
-                    gbr_dir,
-                )
+                logger.error(f"Could not find required Gerber {k} with pattern: {v} in {gbr_dir}/ directory!")
                 gerbers_missing = True
             for i in range(0, len(matches)):
                 gerber_path = matches[i]
                 new_name = gerb_file_renames[k] + str(i) + ".gbr"
-                new_path = config.gbr_path + new_name
-                logger.info("Found %s%d: %s, saving as: %s", k, i, gerber_path, new_path)
+                new_path = config.gbr_path / new_name
+                logger.info(f"Found {k}{i}: {gerber_path}, saving as: {new_path}")
                 shutil.copy(gerber_path, new_path)
             continue
 
         gerber_path = matches[0]
         new_name = gerb_file_renames[k] + ".gbr"
-        new_path = config.gbr_path + new_name
+        new_path = config.gbr_path / new_name
 
-        logger.info("Found %s: %s, saving as: %s", k, gerber_path, new_path)
+        logger.info(f"Found {k}: {gerber_path}, saving as: {new_path}")
         shutil.copy(gerber_path, new_path)
 
     if gerbers_missing:
@@ -206,16 +195,15 @@ def do_prepare_build_directory() -> None:
 
 def do_remove_via_holes() -> None:
     """Remove small PTH holes representing vias from input Gerber files."""
-    pth_gbr_path = os.path.join(config.gbr_path, GBR_PTH + ".gbr")
+    pth_gbr_path = (config.gbr_path / GBR_PTH).with_suffix(".gbr")
     logger.info("Removing via holes from working copy of PTH Gerber file.")
-    if not os.path.exists(pth_gbr_path):
+    if not pth_gbr_path.exists():
         logger.info("PTH file is not present. No vias to remove.")
         return
     # override faulty gerber.read function
-    with open(pth_gbr_path, "r") as f:
+    with open(str(pth_gbr_path), "r") as f:
         data = f.read()
-        pth_gbr_file = gerber.loads(data, pth_gbr_path)
-
+        pth_gbr_file = gerber.loads(data, str(pth_gbr_path))
     via_min_diameter = 0.5
     new_objects = []
     apertures_to_remove = []
@@ -240,8 +228,7 @@ def do_remove_via_holes() -> None:
         new_objects.append(obj)
 
     pth_gbr_file.statements = new_objects
-    pth_gbr_path = os.path.join(config.gbr_path, GBR_PTH + ".gbr")
-    pth_gbr_file.write(pth_gbr_path)
+    pth_gbr_file.write(str(pth_gbr_path))
 
 
 def do_convert_gerb_to_svg() -> None:
@@ -249,9 +236,9 @@ def do_convert_gerb_to_svg() -> None:
     # Convert GBR to SVG, parallelly
     logger.info("Converting GBR to SVG files. ")
     files_for_svg = [GBR_EDGE_CUTS]
-    if os.path.exists(os.path.join(config.gbr_path, GBR_PTH + ".gbr")):
+    if (config.gbr_path / GBR_PTH).with_suffix(".gbr").exists():
         files_for_svg.append(GBR_PTH)
-    if os.path.exists(os.path.join(config.gbr_path, GBR_NPTH + ".gbr")):
+    if (config.gbr_path / GBR_NPTH).with_suffix(".gbr").exists():
         files_for_svg.append(GBR_NPTH)
     with Pool() as p:
         p.map(partial(gbr_to_svg_convert), files_for_svg)
@@ -259,7 +246,7 @@ def do_convert_gerb_to_svg() -> None:
     logger.info("Post-processing SVG files. ")
     # Get edge cuts SVG dimensions
     edge_svg_dimensions_data = ""
-    with open(f"{config.svg_path}{GBR_EDGE_CUTS}.svg", "rt") as handle:
+    with open(str((config.svg_path / GBR_EDGE_CUTS).with_suffix(".svg")), "rt") as handle:
         svg_data = handle.read().split("\n")
         edge_svg_dimensions_data = svg_data[1]
     # Remove frame from layers and possible edge cuts (when edges cross with holes)
@@ -275,8 +262,8 @@ def do_convert_gerb_to_svg() -> None:
 
     if config.blendcfg["SETTINGS"]["USE_INKSCAPE"]:
         logger.info("Processing SVG files with Inkscape.")
-        inkscape_path_union(f"{config.svg_path}{GBR_PTH}.svg")
-        inkscape_path_union(f"{config.svg_path}{GBR_NPTH}.svg")
+        inkscape_path_union((config.svg_path / GBR_PTH).with_suffix(".svg"))
+        inkscape_path_union((config.svg_path / GBR_NPTH).with_suffix(".svg"))
 
 
 def do_generate_displacement_map_foundation() -> None:
@@ -322,7 +309,7 @@ def do_crop_pngs() -> None:
         crop_offset[3],
     )
 
-    map_input_list = [file for file in os.listdir(config.png_path) if os.path.isfile(config.png_path + file)]
+    map_input_list = [file for file in config.png_path.iterdir() if file.is_file()]
     for file in map_input_list:
         crop_png(file, crop_offset)
 
@@ -332,8 +319,8 @@ def do_generate_displacement_maps() -> None:
     logger.info("Building displacement maps.")
 
     # Prepare transparent holes pngs
-    copy_file(config.png_path, config.png_path, GBR_PTH + ".png", TMP_ALPHAW_PTH + ".png")
-    copy_file(config.png_path, config.png_path, GBR_NPTH + ".png", TMP_ALPHAW_NPTH + ".png")
+    copy_file((config.png_path / GBR_PTH).with_suffix(".png"), (config.png_path / TMP_ALPHAW_PTH).with_suffix(".png"))
+    copy_file((config.png_path / GBR_NPTH).with_suffix(".png"), (config.png_path / TMP_ALPHAW_NPTH).with_suffix(".png"))
     wand_operation(TMP_ALPHAW_PTH, fuzz=75, transparency="white", blur=[1, 2])
     wand_operation(TMP_ALPHAW_NPTH, fuzz=75, transparency="white", blur=[1, 2])
 
@@ -367,10 +354,10 @@ def do_generate_displacement_maps() -> None:
 def get_gerbers_to_convert_to_png() -> List[str]:
     """Get a list of .gbr files that need to be converted to PNG."""
     # Prepare data to convert GBR -> SVG
-    files_names_list = list()  # list of gbr files to convert;
-    for file in os.listdir(config.gbr_path):
-        if os.path.isfile(config.gbr_path + file):
-            files_names_list.append(file.replace(".gbr", ""))
+    files_names_list: List[str] = []  # list of gbr files to convert
+    for file in config.gbr_path.iterdir():
+        if file.is_file():
+            files_names_list.append(file.stem)
 
     # Check if all important data are present
     if GBR_EDGE_CUTS not in files_names_list:
@@ -383,13 +370,14 @@ def get_gerbers_to_convert_to_png() -> List[str]:
 
 
 def get_alignment_layers(color: str) -> str:
-    """
-    Prepare command string with alignment layers to be exported with gerbv.
-    The alignment layers are layers that are needed to definitively ensure the same export dimensions and layer placements across all layer exports.
+    """Prepare command string with alignment layers to be exported with gerbv.
+
+    The alignment layers are layers that are needed to definitively ensure the same export dimensions
+    and layer placements across all layer exports.
     Takes color in hex format ('#DDBBCCAA' convention) as argument and uses it as alignment layers' foreground color.
     It should be matched to be the same as export's background color.
     """
-    gbr_path = config.gbr_path
+    gbr_path = str(config.gbr_path) + "/"
     fg = "--foreground"
     return f"'{gbr_path}{GBR_F_MASK}.gbr' {fg}={color} '{gbr_path}{GBR_B_MASK}.gbr' {fg}={color} \
                 '{gbr_path}{GBR_F_FAB}.gbr' {fg}={color} '{gbr_path}{GBR_B_FAB}.gbr' {fg}={color} \
@@ -403,8 +391,8 @@ def gbr_png_convert(data: Tuple[str, str, str, str]) -> None:
     gbr_file_name = data[0] + ".gbr"
     png_file_name = data[1] + ".png"
 
-    in_gbr_file_path = os.path.join(config.gbr_path, gbr_file_name)
-    png_path = os.path.join(config.png_path, png_file_name)
+    in_gbr_file_path = config.gbr_path / gbr_file_name
+    png_path = config.png_path / png_file_name
 
     bg_color = data[2]
     fg_color = data[3]
@@ -420,8 +408,8 @@ def gbr_png_convert(data: Tuple[str, str, str, str]) -> None:
 
 def generate_displacement_map_png(filename: str) -> None:
     """Prepare displacement map from PNGs."""
-    gbr_path = config.gbr_path
-    png_path = os.path.join(config.png_path, filename + ".png")
+    gbr_path = str(config.gbr_path)
+    png_path = (config.png_path / filename).with_suffix(".png")
     side = filename[0]  # first letter from png name
     fg = "--foreground"
     rc = os.system(
@@ -435,49 +423,47 @@ def generate_displacement_map_png(filename: str) -> None:
         raise RuntimeError(f"Failed to generate displacement map: gerbv returned exit code {rc}")
 
 
-def copy_file(path: str, new_path: str, old_file_name: str, new_file_name: str) -> None:
+def copy_file(old_file_path: Path, new_file_path: Path) -> None:
     """Copy file from on path to other path with new name."""
-    if os.path.exists(path + old_file_name):
-        shutil.copy(path + old_file_name, new_path + new_file_name)
+    if old_file_path.exists():
+        shutil.copy(old_file_path, new_file_path)
         os.sync()
 
 
-def remove_files_with_ext(path: str, ext: str) -> None:
+def remove_files_with_ext(dir_path: Path, ext: str) -> None:
     """Remove files with given extension from given path."""
-    file_list = [file for file in os.listdir(path) if file.endswith(ext)]
-    for file in file_list:
-        os.remove(path + file)
+    for file in dir_path.iterdir():
+        if file.suffix == ext:
+            file.unlink()
 
 
 def gbr_to_svg_convert(file_name: str) -> None:
     """Convert gerber file to svg."""
-    gbr_path = config.gbr_path
-    svg_path = config.svg_path
-    gbr_file_path = os.path.join(gbr_path, file_name + ".gbr")
-    svg_file_path = os.path.join(svg_path, file_name + ".svg")
+    gbr_file_path = (config.gbr_path / file_name).with_suffix(".gbr")
+    svg_file_path = (config.svg_path / file_name).with_suffix(".svg")
 
-    if not os.path.isfile(gbr_file_path):
-        raise RuntimeError(f"Gerber file {gbr_file_path} does not exist!")
+    if not gbr_file_path.is_file():
+        raise RuntimeError(f"Gerber file {str(gbr_file_path)} does not exist!")
 
-    gerbv_command = f"gerbv '{gbr_file_path}' --foreground={HEX_BLACK} \
-    '{gbr_path}{GBR_NPTH}.gbr' --foreground={HEX_WHITE} \
-    '{gbr_path}{GBR_PTH}.gbr' --foreground={HEX_WHITE} \
-    '{gbr_path}{GBR_EDGE_CUTS}.gbr' --foreground={HEX_WHITE} \
-    -o '{svg_file_path}' --export=svg 2>/dev/null"
+    gerbv_command = f"gerbv '{str(gbr_file_path)}' --foreground={HEX_BLACK} \
+    '{str(config.gbr_path)}{GBR_NPTH}.gbr' --foreground={HEX_WHITE} \
+    '{str(config.gbr_path)}{GBR_PTH}.gbr' --foreground={HEX_WHITE} \
+    '{str(config.gbr_path)}{GBR_EDGE_CUTS}.gbr' --foreground={HEX_WHITE} \
+    -o '{str(svg_file_path)}' --export=svg 2>/dev/null"
     rc = os.system(gerbv_command)
     if rc != 0:
         raise RuntimeError(f"Failed to convert Gerbers to SVG: gerbv returned exit code {rc}")
 
     # patch for gerbv<2.10.1 & cairo > 1.17.6
-    original_svg = Path(svg_file_path).read_text()
+    original_svg = svg_file_path.read_text()
     svg_w_units = re.sub(r'width="(\d*)" height="(\d*)"', r'width="\1pt" height="\2pt"', original_svg)
-    Path(svg_file_path).write_text(svg_w_units)
+    svg_file_path.write_text(svg_w_units)
 
 
 def correct_frame_in_svg(data: str, frame: str) -> None:
     """Correct dimension of svg file based on edge cuts layer."""
-    file_path = config.svg_path + data + ".svg"
-    if not os.path.exists(file_path):
+    file_path = (config.svg_path / data).with_suffix(".svg")
+    if not file_path.exists():
         return
     with open(file_path, "rt") as handle:
         svg_data = handle.read().split("\n")
@@ -491,12 +477,14 @@ def correct_frame_in_svg(data: str, frame: str) -> None:
         handle.write("\n".join(corrected_svg))
 
 
-def inkscape_path_union(file_path: str) -> None:
+def inkscape_path_union(file_path: Path) -> None:
     """Run Inkscape command."""
-    if not os.path.exists(file_path):
+    if not file_path.exists():
         return
     inkscape_actions = "select-all;object-stroke-to-path;path-union;"
-    rc = os.system(f'inkscape --actions="{inkscape_actions}export-filename:{file_path};export-do" "{file_path}"')
+    rc = os.system(
+        f'inkscape --actions="{inkscape_actions}export-filename:{str(file_path)};export-do" "{str(file_path)}"'
+    )
 
     if rc != 0:
         raise RuntimeError(f"Failed to generate path union: inkscape returned exit code {rc}")
@@ -504,7 +492,7 @@ def inkscape_path_union(file_path: str) -> None:
 
 def get_edge_trim_data() -> List[int]:
     """Calculate trim offset for PNGs."""
-    with Image(filename=os.path.join(config.png_path, GBR_EDGE_CUTS + ".png")) as edge_cuts_png:
+    with Image(filename=str((config.png_path / GBR_EDGE_CUTS).with_suffix(".png"))) as edge_cuts_png:
         edge_cuts_png.trim(percent_background=0.98)
 
         count_edge = 0
@@ -523,20 +511,20 @@ def get_edge_trim_data() -> List[int]:
         ]
 
 
-def crop_png(file: str, crop_offset: List[int]) -> None:
+def crop_png(image_path: Path, crop_offset: List[int]) -> None:
     """Crop PNG using calculated offset."""
-    image_path = os.path.join(config.png_path, file)
-
-    with Image(filename=image_path) as png:
+    with Image(filename=str(image_path)) as png:
         image_width = png.width
         image_height = png.height
         if image_width < crop_offset[0] + crop_offset[2]:
-            logger.warn("%d", crop_offset[0] + crop_offset[2])
-            logger.warn("Image to crop is thinner than given crop values.")
+            logger.warning(image_path, image_width, image_height)
+            logger.warning(crop_offset[0] + crop_offset[2])
+            logger.warning("Image to crop is thinner than given crop values.")
             return
         if image_height < crop_offset[1] + crop_offset[3]:
-            logger.warn("%d", crop_offset[1] + crop_offset[3])
-            logger.warn("Image to crop is higher than given crop values.")
+            logger.warning(image_path)
+            logger.warning(crop_offset[1] + crop_offset[3])
+            logger.warning("Image to crop is higher than given crop values.")
             return
 
         png.crop(
@@ -545,7 +533,7 @@ def crop_png(file: str, crop_offset: List[int]) -> None:
             left=crop_offset[2],
             top=crop_offset[3],
         )
-        png.save(filename=image_path)
+        png.save(filename=str(image_path))
 
 
 def wand_operation(
@@ -557,10 +545,10 @@ def wand_operation(
     blur: None | List[int] = None,
 ) -> None:
     """Imagemagick-like operation."""
-    image_path = config.png_path + in_file + ".png"
-    if not os.path.exists(image_path):
+    image_path = (config.png_path / in_file).with_suffix(".png")
+    if not image_path.exists():
         return
-    with Image(filename=image_path) as png:
+    with Image(filename=str(image_path)) as png:
         percent_fuzz = int(png.quantum_range * fuzz / 100)
         if transparency != "":
             png.transparent_color(color=Color(transparency), alpha=alpha, fuzz=percent_fuzz)
@@ -568,32 +556,32 @@ def wand_operation(
             png.blur(blur[0], blur[1])
         if out_file == "":
             out_file = in_file
-        png.save(filename=config.png_path + out_file + ".png")
+        png.save(filename=f"{str(config.png_path)}/{out_file}.png")
 
 
 def add_pngs(in_file: str, in_list: List[str], out_file: str = "") -> None:
     """Join PNGs on one another."""
     if out_file == "":
         out_file = in_file
-    with Image(filename=config.png_path + in_file + ".png") as png:
+    with Image(filename=f"{config.png_path}/{in_file}.png") as png:
         png.background_color = Color("transparent")
         for file in in_list:
-            file_path = config.png_path + file + ".png"
-            if not os.path.exists(file_path):
+            file_path = (config.png_path / file).with_suffix(".png")
+            if not file_path.exists():
                 continue
-            with Image(filename=file_path) as png2:
+            with Image(filename=str(file_path)) as png2:
                 png2.transparent_color(color=Color("white"), alpha=0.0)
                 png.composite(image=png2, gravity="center")
-        png.save(filename=config.png_path + out_file + ".png")
+        png.save(filename=f"{config.png_path}/{out_file}.png")
 
 
 def prepare_silks(in_file: str, mask: str = "", out_file: str = "") -> None:
     """Cutout mask areas + prepare transparent silks pngs + set silks alpha."""
     if out_file == "":
         out_file = in_file
-    with Image(filename=config.png_path + in_file + ".png") as png:
+    with Image(filename=f"{config.png_path}/{in_file}.png") as png:
         if mask != "":
-            with Image(filename=config.png_path + mask + ".png") as png2:
+            with Image(filename=f"{config.png_path}/{mask}.png") as png2:
                 png2.colorize(color=Color("black"), alpha=Color(MASK_FG_COLOR))
                 png.composite(image=png2, gravity="center")
         png.transparent_color(color=Color("black"), alpha=0.0)
@@ -605,7 +593,7 @@ def prepare_silks(in_file: str, mask: str = "", out_file: str = "") -> None:
             [0, 0, 0, 0, 0.5],
         ]
         png.color_matrix(levelize_matrix)
-        png.save(filename=config.png_path + out_file + ".png")
+        png.save(filename=f"{config.png_path}/{out_file}.png")
 
 
 def prepare_solder() -> None:
@@ -616,21 +604,21 @@ def prepare_solder() -> None:
         prepare_solder_side(GBR_B_CU, GBR_B_MASK, GBR_B_PASTE, OUT_B_SOLDER)
 
 
-def prepare_solder_side(cu: str, mask: str, paste: str, out: str) -> None:
+def prepare_solder_side(gbr_cu: str, gbr_mask: str, gbr_paste: str, gbr_out: str) -> None:
     """Prepare PNG with Solder placement on single board side."""
-    cu = config.png_path + cu + ".png"
-    mask = config.png_path + mask + ".png"
-    paste = config.png_path + paste + ".png"
-    ofile = config.png_path + out + ".png"
-    ofile_fixer = config.png_path + out + "_fixer.png"
-    ofile_svg = config.svg_path + out + ".svg"
-    ofile_fixer_svg = config.svg_path + out + "_fixer.svg"
-    if not os.path.exists(paste):
+    cu = (config.png_path / gbr_cu).with_suffix(".png")
+    mask = (config.png_path / gbr_mask).with_suffix(".png")
+    paste = (config.png_path / gbr_paste).with_suffix(".png")
+    ofile = (config.png_path / gbr_out).with_suffix(".png")
+    ofile_fixer = (config.png_path / f"{gbr_out}_fixer").with_suffix(".png")
+    ofile_svg = (config.svg_path / gbr_out).with_suffix(".svg")
+    ofile_fixer_svg = (config.svg_path / f"{gbr_out}_fixer").with_suffix(".svg")
+    if not paste.exists():
         return
 
-    with Image(filename=cu) as cu, Image(filename=mask) as mask, Image(filename=paste) as paste:
-        assert type(cu) == Image
-        assert type(paste) == Image
+    with Image(filename=str(cu)) as cu, Image(filename=str(mask)) as mask, Image(filename=str(paste)) as paste:
+        assert isinstance(cu, Image)
+        assert isinstance(paste, Image)
 
         cu.composite(image=mask, gravity="center", operator="lighten")
         cu.composite(image=mask, gravity="center", operator="lighten")
@@ -641,7 +629,7 @@ def prepare_solder_side(cu: str, mask: str, paste: str, out: str) -> None:
         paste2 = paste.clone()
         paste2.morphology(method="dilate", kernel="disk:30", iterations=1)
         paste2.morphology(method="erode", kernel="disk:28", iterations=1)
-        for i in range(10):
+        for _ in range(10):
             paste.morphology(method="dilate", kernel="disk", iterations=1)
             paste.composite(image=cu, gravity="center", operator="darken")
         paste.composite(image=paste2, gravity="center", operator="darken")
@@ -649,10 +637,12 @@ def prepare_solder_side(cu: str, mask: str, paste: str, out: str) -> None:
         paste.negate()
         paste.threshold(0.1)
 
-        paste.save(filename=ofile)
+        paste.save(filename=str(ofile))
 
         paste.morphology(method="erode", kernel="disk:2", iterations=1)
-        paste.save(filename=ofile_fixer)
+        paste.save(filename=str(ofile_fixer))
 
-        vtracer.convert_image_to_svg_py(ofile, ofile_svg, colormode="binary", hierarchical="cutout")
-        vtracer.convert_image_to_svg_py(ofile_fixer, ofile_fixer_svg, colormode="binary", hierarchical="cutout")
+        vtracer.convert_image_to_svg_py(str(ofile), str(ofile_svg), colormode="binary", hierarchical="cutout")
+        vtracer.convert_image_to_svg_py(
+            str(ofile_fixer), str(ofile_fixer_svg), colormode="binary", hierarchical="cutout"
+        )

@@ -1,14 +1,12 @@
 """Module for configuring input data."""
 
-import os
-from os import getcwd, path
 import gerber2blend.modules.file_io as fio
 import gerber2blend.core.blendcfg as bcfg
 import gerber2blend.core.schema as sch
 from typing import Dict, Any, List, Tuple
 import logging
 import argparse
-import pathlib
+from pathlib import Path
 
 # displacement map outputs from gerber -> png conversion
 OUT_F_DISPMAP = "F_dispmap"
@@ -43,23 +41,23 @@ GBR_IN = "In"
 
 logger = logging.getLogger(__name__)
 
-CWD: str = ""
+CWD: Path = Path()
 blendcfg: Dict[str, Any] = {}
 args: argparse.Namespace
-g2b_dir_path: str = ""
-png_path: str = ""
-gbr_path: str = ""
-svg_path: str = ""
-pcb_blend_path: str = ""
-pcb_gltf_file_path: str = ""
-pcb_gltf_dir_path: str = ""
-pcb_gltf_textures_path: str = ""
-mat_blend_path: str = ""
-mat_library_path: str = ""
-model_library_path: str = ""
+g2b_dir_path: Path = Path()
+png_path: Path = Path()
+gbr_path: Path = Path()
+svg_path: Path = Path()
+pcb_blend_path: Path = Path()
+pcb_gltf_file_path: Path = Path()
+pcb_gltf_dir_path: Path = Path()
+pcb_gltf_textures_path: Path = Path()
+mat_blend_path: Path = Path()
+mat_library_path: Path = Path()
+model_library_path: Path = Path()
 PCB_name: str = ""
-fab_path: str = ""
-prj_path: str = ""
+fab_path: Path = Path()
+prj_path: Path = Path()
 stackup_data: List[Tuple[str, float]] = []
 g2bhickness: float = 0.0
 pcbscale_gerbv: float = 0.0
@@ -80,8 +78,8 @@ def init_global(arguments: argparse.Namespace) -> int:
     global args
     global g2b_dir_path
 
-    prj_path = getcwd() + "/"
-    g2b_dir_path = path.dirname(__file__) + "/.."
+    prj_path = Path(".").absolute()
+    g2b_dir_path = Path(__file__).parents[1]
 
     # Handle blendcfg when argument switch is used and end script
     if arguments.reset_config:
@@ -107,7 +105,7 @@ def init_global(arguments: argparse.Namespace) -> int:
 
 def handle_config(overwrite: bool = False) -> None:
     """Determine if config should be copied or merged, applies overwrite mode if enabled in arguments."""
-    if not path.exists(path.join(prj_path, bcfg.BLENDCFG_FILENAME)):
+    if not (prj_path / bcfg.BLENDCFG_FILENAME).exists():
         bcfg.copy_blendcfg(prj_path, g2b_dir_path)
     else:
         bcfg.merge_blendcfg(prj_path, g2b_dir_path, overwrite=overwrite)
@@ -127,6 +125,7 @@ def configure_paths(arguments: argparse.Namespace) -> None:
     global svg_path
     global pcb_blend_path
     global pcb_gltf_file_path
+    global pcb_gltf_textures_path
     global pcb_gltf_dir_path
     global mat_blend_path
     global mat_library_path
@@ -134,31 +133,34 @@ def configure_paths(arguments: argparse.Namespace) -> None:
     global PCB_name
     global prj_path
 
-    fab_path = prj_path + blendcfg["SETTINGS"]["FAB_DIR"] + "/"
-    if not os.path.isdir(fab_path):
+    fab_path = prj_path / blendcfg["SETTINGS"]["FAB_DIR"]
+    if not fab_path.is_dir():
         raise RuntimeError(
-            f"There is no {blendcfg['SETTINGS']['FAB_DIR']}/ directory in the current working directory! ({prj_path})"
+            (
+                f"There is no {blendcfg['SETTINGS']['FAB_DIR']}/ directory in the current working directory!"
+                f"({str(prj_path)})"
+            )
         )
 
     # Determine the name of the PCB to use as a name for the .blend
     if arguments.blend_path is None:
         PCB_name = fio.read_pcb_name(prj_path)
-        pcb_blend_path = fab_path + PCB_name + ".blend"
-        pcb_gltf_dir_path = fab_path + "gltf/"
-        pcb_gltf_file_path = pcb_gltf_dir_path + PCB_name + ".gltf"
+        pcb_blend_path = (fab_path / PCB_name).with_suffix(".blend")
+        pcb_gltf_dir_path = fab_path / "gltf"
     else:
-        PCB_name = arguments.blend_path.split("/")[-1].replace(".blend", "")
-        pcb_blend_path = path.abspath(arguments.blend_path)
-        parent_dir_path = "/".join(arguments.blend_path.split("/")[:-1]) + "/"
-        pcb_gltf_dir_path = parent_dir_path + "gltf/"
-        pcb_gltf_file_path = pcb_gltf_dir_path + PCB_name + ".gltf"
+        pcb_blend_path = Path(arguments.blend_path).absolute()
+        PCB_name = pcb_blend_path.stem
+        parent_dir_path = pcb_blend_path.parent
+        pcb_gltf_dir_path = parent_dir_path / "gltf"
 
-    png_path = fab_path + "PNG/"
-    gbr_path = fab_path + "GBR/"
-    svg_path = fab_path + "SVG/"
+    pcb_gltf_textures_path = pcb_gltf_dir_path / "textures"
+    pcb_gltf_file_path = (pcb_gltf_dir_path / PCB_name).with_suffix(".gltf")
 
-    # paths:
-    mat_blend_path = g2b_dir_path + "/templates/PCB_materials.blend"
+    png_path = fab_path / "PNG"
+    gbr_path = fab_path / "GBR"
+    svg_path = fab_path / "SVG"
+
+    mat_blend_path = g2b_dir_path / "templates/PCB_materials.blend"
 
 
 def configure_constants(arguments: argparse.Namespace) -> None:

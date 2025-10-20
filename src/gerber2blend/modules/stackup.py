@@ -3,10 +3,10 @@
 import json
 from typing import List, Tuple, Dict, Any
 import gerber2blend.modules.config as config
-import os.path
 import logging
 import functools
 import re
+from pathlib import Path
 
 logger = logging.getLogger()
 
@@ -44,7 +44,7 @@ def get() -> StackupInfo:
 def _load_stackup_from_file() -> StackupInfo:
     """Load stackup data from file specified in the current configuration."""
     # read stackup from stackup.json
-    filepath = os.path.join(config.fab_path, "stackup.json")
+    filepath = config.fab_path / "stackup.json"
     if config.blendcfg["EFFECTS"]["STACKUP"]:
         calculated_thickness, stackup_data = _parse_stackup_from_file(filepath)
     else:
@@ -58,7 +58,7 @@ def _load_stackup_from_file() -> StackupInfo:
 
 
 @functools.cache
-def _parse_stackup_from_file(file_path: str) -> Tuple[float, List[Dict[str, Any]]]:
+def _parse_stackup_from_file(file_path: Path) -> Tuple[float, List[Dict[str, Any]]]:
     """Parse the stackup data from the given JSON file.
 
     Returns
@@ -71,8 +71,8 @@ def _parse_stackup_from_file(file_path: str) -> Tuple[float, List[Dict[str, Any]
     calculated_thickness = config.blendcfg["SETTINGS"]["DEFAULT_BRD_THICKNESS"]
     pattern = re.compile(r"^(dielectric \d+) \(\d+/\d+\)$")
     try:
-        logger.debug("Loading stackup data from: %s", file_path)
-        if not os.path.exists(file_path):
+        logger.debug(f"Loading stackup data from: {str(file_path)}")
+        if not file_path.exists():
             logger.warning("Error while reading stackup.json!")
             return calculated_thickness, stackup_data
         with open(file_path) as stackup_json_file:
@@ -94,8 +94,8 @@ def _parse_stackup_from_file(file_path: str) -> Tuple[float, List[Dict[str, Any]
                 previous_entry["user-name"] = match.group(1)
             previous_entry = new_entry
 
-        logger.debug("Found stackup data: " + str(stackup_data))
-        logger.debug("Calculated thickness: " + str(calculated_thickness))
+        logger.debug(f"Found stackup data: {str(stackup_data)}")
+        logger.debug(f"Calculated thickness: {str(calculated_thickness)}")
     except Exception as e:
         logger.warning("Error while reading stackup.json!", exc_info=True)
         raise RuntimeError("Could not read stackup.json") from e

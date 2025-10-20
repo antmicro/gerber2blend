@@ -21,7 +21,7 @@ sudo apt install gerbv inkscape python3.11 python3.11-venv pipx
     sudo dpkg --install KTX-Software-4.4.0-Linux-x86_64.deb
     sudo apt install npm
     nvm use 22
-    npm install -g @gltf-transform/cli @gltf-transform/core @gltf-transform/extensions @gltf-transform/functions
+    npm install -g @gltf-transform/cli@4.2.0 @gltf-transform/core@4.2.0 @gltf-transform/extensions@4.2.0 @gltf-transform/functions@4.2.0
     ```
 
 ```{warning}

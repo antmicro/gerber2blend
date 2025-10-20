@@ -47,5 +47,5 @@ gerber2blend
 
 `.blend` file will be created in the `fab` directory.
 
-To preview generated `.blend` file, open it with instance of Blender in version >=4.1.
+To preview generated `.blend` file, open it with instance of Blender in version >=4.4.
 

@@ -6,13 +6,10 @@ import math
 from mathutils import Vector, kdtree
 import logging
 from typing import List, Tuple, Any, Literal
-import os
 import re
 import subprocess
 from pygltflib import GLTF2  # type:ignore
 from pathlib import Path
-import gerber2blend.modules.config as config
-import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -196,29 +193,17 @@ def make_image_paths_relative(image: bpy.types.Image) -> None:
         packed_image.filepath = f"//{packed_image.filepath.split('/')[-1]}"
 
 
-def mkdir(path: str) -> None:
-    """Create a directory at the specified path.
-
-    Wraps any errors with a nicer error exception.
-    """
-    try:
-        os.makedirs(path, exist_ok=True)
-    except OSError as e:
-        raise RuntimeError(f"Could not create folder at path {path}: {repr(e)}") from e
-
-
 def strip_prefix_from_textures(files_path: Path, gltf_imgs: List[Any], prefix: str) -> None:
     """Strip glTF textures from prefix in name."""
     for file in files_path.iterdir():
-        file.replace(file.with_stem(file.stem.replace(prefix, "")))
+        file.replace(file.with_name(file.name.replace(prefix, "")))
     for img in gltf_imgs:
         img.name = img.name.replace(prefix, "")
         img.uri = img.uri.replace(prefix, "")
 
 
-def export_to_gltf(gltf_file_str: str) -> None:
+def export_to_gltf(gltf_file_path: Path, textures_path: Path) -> None:
     """Save PCB in glTF format."""
-    gltf_file_path = Path(gltf_file_str)
     gltf_dir = gltf_file_path.parent
     logger.info(f"Exporting PCB model into glTF format to: {str(gltf_file_path)}")
     bpy.ops.export_scene.gltf(
@@ -227,28 +212,26 @@ def export_to_gltf(gltf_file_str: str) -> None:
         export_format="GLTF_SEPARATE",
         export_extras=True,
         export_apply=True,
-        export_texture_dir=str(gltf_dir),
+        export_texture_dir=str(textures_path),
         export_draco_mesh_compression_enable=True,
     )
     gltf = GLTF2().load(gltf_file_path)
     gltf_images = gltf.images
-    strip_prefix_from_textures(gltf_dir, gltf_images, prefix="gltf_")
+    strip_prefix_from_textures(textures_path, gltf_images, prefix="gltf_")
     pattern = re.compile(r"([A-Za-z0-9-_]+)_metallic-\1_roughness")
     for img in gltf_images:
         if not (match := pattern.match(img.name)):
             continue
         new_name = f"{match.group(1)}_metallic_roughness"
         img_file = gltf_dir / img.uri
-        img_file.rename(gltf_dir / f"{new_name}{img_file.suffix}")
+        img_file.rename(textures_path / f"{new_name}{img_file.suffix}")
         img.uri = img.uri.replace(img.name, new_name)
         img.name = new_name
     gltf.save(gltf_file_path)
 
 
-def convert_ktx2(gltf_file_str: str) -> None:
+def convert_ktx2(gltf_file_path: Path, textures_path: Path) -> None:
     """Convert glTF textures to .ktx2 format."""
-    gltf_file_path = Path(gltf_file_str)
-    gltf_dir = gltf_file_path.parent
     logger.info("Converting glTF textures to .ktx2 format.")
     npm_use_cmd = "export NVM_DIR=$HOME/.nvm && source $NVM_DIR/nvm.sh && nvm use 22 >/dev/null"
     transform_log = subprocess.run(
@@ -263,18 +246,19 @@ def convert_ktx2(gltf_file_str: str) -> None:
         executable="/bin/bash",
         text=True,
     )
-    for texture_path in gltf_dir.iterdir():
+    for texture_path in textures_path.iterdir():
         if texture_path.suffix == ".png":
             texture_path.unlink()
+    textures_path.rmdir()
 
 
-def save_pcb_blend(path: str, apply_transforms: bool = False) -> None:
+def save_pcb_blend(file_path: Path, apply_transforms: bool = False) -> None:
     """Save blendfile."""
     bpy.ops.file.pack_all()
     if apply_transforms:
         for obj in bpy.context.scene.objects:
             apply_all_transform_obj(obj)
-    bpy.ops.wm.save_as_mainfile(filepath=path)
+    bpy.ops.wm.save_as_mainfile(filepath=str(file_path))
 
 
 def clear_obsolete_data() -> None:

@@ -1,7 +1,6 @@
 """Module responsible for appending and preparing PCB shaders."""
 
 import bpy
-import os
 import math
 import gerber2blend.modules.config as config
 import gerber2blend.modules.custom_utilities as cu
@@ -21,8 +20,8 @@ from gerber2blend.modules.config import (
     OUT_B_SOLDER,
 )
 import logging
-from typing import List, Tuple, Literal
 from pathlib import Path
+from typing import List, Tuple, Literal
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ def reload_textures(texture: str) -> None:
     """Refresh image saved at filepath."""
     for image in bpy.data.images:
         logger.debug(image.filepath)
-    bpy.data.images[texture].filepath = config.png_path + texture
+    bpy.data.images[texture].filepath = str(config.png_path / texture)
     logger.debug("Reloading textures: " + bpy.data.images[texture].filepath)
 
 
@@ -86,7 +85,7 @@ def create_inner_layer_material(mat_name: str, png: str) -> None:
     in_copy.name = mat_name
     # update Cu texture
     image_cu = in_copy.node_tree.nodes["Image Texture.001"]  # type:ignore [attr-defined]
-    bpy.ops.image.open(filepath=config.png_path + png)
+    bpy.ops.image.open(filepath=str(config.png_path / png))
     image_cu.image = bpy.data.images[png]
 
 
@@ -172,12 +171,12 @@ def process_materials(board_col: bpy.types.Collection, in_list: List[str]) -> No
     with Color("white") as bg:
         with Image(width=100, height=100, background=bg) as img:
             # white image as OUT_*_SOLDER will not introduce changes in texture color
-            fsolder = config.png_path + OUT_F_SOLDER + ".png"
-            if not os.path.exists(fsolder):
-                img.save(filename=fsolder)
-            bsolder = config.png_path + OUT_B_SOLDER + ".png"
-            if not os.path.exists(bsolder):
-                img.save(filename=bsolder)
+            fsolder = (config.png_path / OUT_F_SOLDER).with_suffix(".png")
+            if not fsolder.exists():
+                img.save(filename=str(fsolder))
+            bsolder = (config.png_path / OUT_B_SOLDER).with_suffix(".png")
+            if not bsolder.exists():
+                img.save(filename=str(bsolder))
 
     textures = [
         f"{OUT_F_DISPMAP}.png",
@@ -256,7 +255,7 @@ def init_render_settings() -> None:
 def create_image_node(node_name: str, nodes: bpy.types.Nodes, img_res: List[int], color: bool = True) -> bpy.types.Node:
     """Create Image node with new texture."""
     image = bpy.data.images.new(node_name, height=img_res[1], width=img_res[0], is_data=color)
-    image.filepath_raw = f"{config.pcb_gltf_textures_path}{node_name}.png"
+    image.filepath_raw = str((config.pcb_gltf_textures_path / node_name).with_suffix(".png"))
     image.file_format = "PNG"
     texture_node = nodes.new("ShaderNodeTexImage")
     texture_node.name = node_name
@@ -275,7 +274,7 @@ def bake_texture(image_node: bpy.types.Node, nodes: bpy.types.Nodes, bake_type: 
     image.save()
     image.pack()
     cu.make_image_paths_relative(image)
-    Path("." + image.filepath).unlink()
+    Path((config.pcb_gltf_textures_path / image.name)).with_suffix(".png").unlink()
     nodes.active = None  # type:ignore
     image_node.select = False
 

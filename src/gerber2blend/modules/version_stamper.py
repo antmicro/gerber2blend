@@ -1,4 +1,3 @@
-import os
 import subprocess
 from typing import Optional
 import bpy
@@ -7,7 +6,7 @@ import logging
 import gerber2blend.modules.custom_utilities as cu
 import gerber2blend.modules.config as cfg
 import importlib.metadata
-
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +37,7 @@ class VersionStamper(gerber2blend.core.module.Module):
         cu.save_pcb_blend(cfg.pcb_blend_path)
 
 
-def read_git_repository_hash(path: str) -> Optional[str]:
+def read_git_repository_hash(path: Path) -> Optional[str]:
     """Read the short commit hash of the Git repository at the given path.
 
     If there is no Git repository at the given path or an error occurs,
@@ -48,7 +47,9 @@ def read_git_repository_hash(path: str) -> Optional[str]:
     """
     try:
         return (
-            subprocess.check_output(["git", "describe", "--always", "--dirty"], cwd=path).decode("utf-8").strip(" \n")
+            subprocess.check_output(["git", "describe", "--always", "--dirty"], cwd=str(path))
+            .decode("utf-8")
+            .strip(" \n")
         )
     except Exception as e:
         logger.warning(f"Failed to read Git commit hash: {e}")

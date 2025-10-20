@@ -7,7 +7,7 @@ Copyright (c) 2022-2025 [Antmicro](https://www.antmicro.com)
 This is an open-source utility dedicated to generating 3D models of Printed Circuit Boards (PCBs) in Blender (.blend) format.
 The tool uses Gerber (Gerber RS-274X) input files that are used for producing physical PCBs.
 This makes the PCB visualization independent from the software used for designing it.
-Currently `gerber2blend` supports Blender 4.1+.
+Currently `gerber2blend` supports Blender 4.4+.
 
 ## Installation
 
@@ -19,7 +19,7 @@ Currently `gerber2blend` supports Blender 4.1+.
 * inkscape >= 1.2
 * python3.11, pipx
 
-Additionally to preview and modify the generated .blend file [Blender 4.1](https://www.blender.org/download/releases/4-1/) needs to be installed.
+Additionally to preview and modify the generated .blend file [Blender 4.4](https://www.blender.org/download/releases/4-4/) needs to be installed.
 
 ### Installation (Debian)
 
