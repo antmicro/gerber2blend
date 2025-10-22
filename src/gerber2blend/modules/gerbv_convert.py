@@ -446,9 +446,9 @@ def gbr_to_svg_convert(file_name: str) -> None:
         raise RuntimeError(f"Gerber file {str(gbr_file_path)} does not exist!")
 
     gerbv_command = f"gerbv '{str(gbr_file_path)}' --foreground={HEX_BLACK} \
-    '{str(config.gbr_path)}{GBR_NPTH}.gbr' --foreground={HEX_WHITE} \
-    '{str(config.gbr_path)}{GBR_PTH}.gbr' --foreground={HEX_WHITE} \
-    '{str(config.gbr_path)}{GBR_EDGE_CUTS}.gbr' --foreground={HEX_WHITE} \
+    '{str(config.gbr_path)}/{GBR_NPTH}.gbr' --foreground={HEX_WHITE} \
+    '{str(config.gbr_path)}/{GBR_PTH}.gbr' --foreground={HEX_WHITE} \
+    '{str(config.gbr_path)}/{GBR_EDGE_CUTS}.gbr' --foreground={HEX_WHITE} \
     -o '{str(svg_file_path)}' --export=svg 2>/dev/null"
     rc = os.system(gerbv_command)
     if rc != 0:
