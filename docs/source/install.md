@@ -55,4 +55,4 @@ Installation for developers:
 ```
 
 This installs the required dependencies and installs `gerber2blend` compatibile with Blender.
-Blender is currently supported in version `4.4`.
+Blender is currently supported in version `4.5 LTS`.
